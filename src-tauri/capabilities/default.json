@@ -1,0 +1,10 @@
+{
+  "identifier": "default",
+  "description": "CodeBook local manuscript and export dialogs",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-set-theme",
+    "dialog:allow-save"
+  ]
+}

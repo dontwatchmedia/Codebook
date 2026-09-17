@@ -1,0 +1,27 @@
+param([switch]$UseExistingExecutable)
+$ErrorActionPreference = 'Stop'
+$workspace = Split-Path -Parent $PSScriptRoot
+Set-Location -LiteralPath $workspace
+$builtExe = Join-Path $workspace 'src-tauri\target\release\codebook.exe'
+$rootExe = Join-Path $workspace 'CodeBook.exe'
+if (-not $UseExistingExecutable) {
+    if (-not (Test-Path -LiteralPath $builtExe)) { throw 'Build the desktop executable first, or use -UseExistingExecutable to package the current root executable.' }
+    Copy-Item -LiteralPath $builtExe -Destination $rootExe -Force
+    if ((Get-FileHash -LiteralPath $rootExe).Hash -ne (Get-FileHash -LiteralPath $builtExe).Hash) { throw 'Executable copy verification failed.' }
+}
+if (-not (Test-Path -LiteralPath $rootExe)) { throw 'CodeBook.exe is missing from the project root.' }
+$releaseDir = Join-Path $workspace 'release'
+New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
+$releaseExe = Join-Path $releaseDir 'CodeBook.exe'
+Copy-Item -LiteralPath $rootExe -Destination $releaseExe -Force
+Copy-Item -LiteralPath 'docs\START_HERE.txt' -Destination $releaseDir -Force
+Copy-Item -LiteralPath 'README.md','VALIDATION.md','LICENSE' -Destination $releaseDir -Force
+$hash = (Get-FileHash -LiteralPath $rootExe -Algorithm SHA256).Hash
+Set-Content -LiteralPath (Join-Path $releaseDir 'CodeBook.exe.sha256') -Value "$hash  CodeBook.exe" -Encoding ascii
+Copy-Item -LiteralPath (Join-Path $releaseDir 'CodeBook.exe.sha256') -Destination (Join-Path $workspace 'CodeBook.exe.sha256') -Force
+$version = (Get-Content -Raw -LiteralPath 'package.json' | ConvertFrom-Json).version
+$archive = Join-Path $releaseDir "CodeBook-$version-Windows.zip"
+$files = @('CodeBook.exe','START_HERE.txt','README.md','VALIDATION.md','LICENSE','CodeBook.exe.sha256') | ForEach-Object { Join-Path $releaseDir $_ }
+Compress-Archive -LiteralPath $files -DestinationPath $archive -Force
+Get-Item -LiteralPath $rootExe,$archive | Select-Object FullName,Length
+Write-Output "SHA256: $hash"

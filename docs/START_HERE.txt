@@ -1,0 +1,19 @@
+CODEBOOK 0.1 — EARLY EDITION
+
+Extract the ZIP, then double-click CodeBook.exe.
+
+No account, internet connection, Node.js, or Rust is needed to write.
+The app uses the Microsoft Edge WebView2 runtime included on this machine.
+
+Open the Learning C++ sample, or choose New book to start writing.
+
+Your books are saved in your Windows app-data folder, not beside the EXE.
+The Preferences screen shows the exact location. Moving the EXE does not
+move your library. Use Export > CodeBook project to back up or transfer
+a complete book, including notes and images.
+
+This release implements the core writing MVP. PDF, EPUB, DOCX, AI, sync,
+and collaboration are not included. See README.md for the feature list
+and limitations, and VALIDATION.md for testing evidence.
+
+The executable is unsigned.

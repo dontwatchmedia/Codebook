@@ -1095,7 +1095,7 @@ button.active {
 
 /* Source documents normally use black ink; adapt that default to dark paper
    while keeping the original color in saved data, clipboard HTML, and exports. */
-:root[data-theme="dark"]
+:root[data-color-scheme="dark"]
   .manuscript
   [data-document-ink="default"]:not([data-document-background="explicit"] *) {
   color: var(--ink) !important;
@@ -2076,7 +2076,7 @@ button.active {
   --accent: #776546;
   --accent-soft: #e9e1cf;
 }
-:root[data-theme="dark"] {
+:root[data-color-scheme="dark"] {
   color-scheme: dark;
   --bg: #1c2520;
   --surface: #222d26;
@@ -2089,67 +2089,67 @@ button.active {
   --accent-soft: #314637;
   --shadow: 0 20px 80px #0006;
 }
-:root[data-theme="dark"] .primary {
+:root[data-color-scheme="dark"] .primary {
   background: #63866a;
   color: #fff;
 }
-:root[data-theme="dark"] .chapter-row.current,
-:root[data-theme="dark"] .rail-item.selected {
+:root[data-color-scheme="dark"] .chapter-row.current,
+:root[data-color-scheme="dark"] .rail-item.selected {
   background: #314832;
   color: #bbd2ad;
 }
-:root[data-theme="dark"] .code-block {
+:root[data-color-scheme="dark"] .code-block {
   background: #26332a;
   border-color: #41533d;
 }
-:root[data-theme="dark"] .code-header {
+:root[data-color-scheme="dark"] .code-header {
   background: #2d3c2e;
   border-color: #41533d;
 }
-:root[data-theme="dark"] .code-body pre {
+:root[data-color-scheme="dark"] .code-body pre {
   color: #afc59c;
 }
-:root[data-theme="dark"] .code-caption {
+:root[data-color-scheme="dark"] .code-caption {
   border-color: #41533d;
 }
-:root[data-theme="dark"] .manuscript aside {
+:root[data-color-scheme="dark"] .manuscript aside {
   background: #29372a;
   border-color: #41533d;
   color: #afbc9e;
 }
-:root[data-theme="dark"] .manuscript p code,
-:root[data-theme="dark"] .manuscript li code {
+:root[data-color-scheme="dark"] .manuscript p code,
+:root[data-color-scheme="dark"] .manuscript li code {
   background: #344532;
   color: #b4c99f;
 }
-:root[data-theme="dark"] .notes-section textarea {
+:root[data-color-scheme="dark"] .notes-section textarea {
   background: #2e3125;
   border-color: #414433;
   color: #b8b498;
 }
-:root[data-theme="dark"] .new-book-card,
-:root[data-theme="dark"] .export-options > button.selected {
+:root[data-color-scheme="dark"] .new-book-card,
+:root[data-color-scheme="dark"] .export-options > button.selected {
   background: #29372a;
   border-color: #4a5e43;
 }
-:root[data-theme="dark"] .tags > span,
-:root[data-theme="dark"] .small-pill {
+:root[data-color-scheme="dark"] .tags > span,
+:root[data-color-scheme="dark"] .small-pill {
   background: #34442f;
   border-color: #44543c;
   color: #b6c4a5;
 }
-:root[data-theme="dark"] .note-icon {
+:root[data-color-scheme="dark"] .note-icon {
   background: #2e3e2e;
   border-color: #46583e;
 }
-:root[data-theme="dark"] .shelf-tab b,
-:root[data-theme="dark"] .rail-item > span {
+:root[data-color-scheme="dark"] .shelf-tab b,
+:root[data-color-scheme="dark"] .rail-item > span {
   background: #384d36;
 }
-:root[data-theme="dark"] .new-book-card:hover {
+:root[data-color-scheme="dark"] .new-book-card:hover {
   background: #32432f;
 }
-:root[data-theme="dark"]
+:root[data-color-scheme="dark"]
   :is(
     .eyebrow,
     .rail-caption,
@@ -2174,11 +2174,11 @@ button.active {
   ) {
   color: #b0bda6;
 }
-:root[data-theme="dark"]
+:root[data-color-scheme="dark"]
   :is(.stat-grid strong, .book-progress strong, .help-copy strong) {
   color: #d0ddc5;
 }
-:root[data-theme="dark"]
+:root[data-color-scheme="dark"]
   :is(
     .editor-footer,
     .editor-footer button,
@@ -2193,7 +2193,7 @@ button.active {
   ) {
   color: #a6b59a;
 }
-:root[data-theme="dark"]
+:root[data-color-scheme="dark"]
   :is(
     .code-header,
     .code-header select,
@@ -2202,35 +2202,38 @@ button.active {
   ) {
   color: #bdcdb0;
 }
-:root[data-theme="dark"] .code-header > button[aria-pressed="true"] {
+:root[data-color-scheme="dark"] .code-header > button[aria-pressed="true"] {
   background: #41583b;
   color: #d6e6c9;
 }
-:root[data-theme="dark"] :is(.code-divider, .chapter-eyebrow > span) {
+:root[data-color-scheme="dark"] :is(.code-divider, .chapter-eyebrow > span) {
   background: #52614a;
 }
-:root[data-theme="dark"] :is(.manuscript td, .manuscript th) {
+:root[data-color-scheme="dark"] :is(.manuscript td, .manuscript th) {
   border-color: #4c5e45;
 }
-:root[data-theme="dark"] :is(.hljs-keyword, .hljs-selector-tag, .hljs-literal) {
+:root[data-color-scheme="dark"]
+  :is(.hljs-keyword, .hljs-selector-tag, .hljs-literal) {
   color: #e0b491;
 }
-:root[data-theme="dark"] :is(.hljs-string, .hljs-regexp, .hljs-addition) {
+:root[data-color-scheme="dark"]
+  :is(.hljs-string, .hljs-regexp, .hljs-addition) {
   color: #bbd69b;
 }
-:root[data-theme="dark"] :is(.hljs-title, .hljs-built_in, .hljs-type) {
+:root[data-color-scheme="dark"] :is(.hljs-title, .hljs-built_in, .hljs-type) {
   color: #9bd1d5;
 }
-:root[data-theme="dark"] :is(.hljs-number, .hljs-symbol) {
+:root[data-color-scheme="dark"] :is(.hljs-number, .hljs-symbol) {
   color: #e9b598;
 }
-:root[data-theme="dark"] :is(.hljs-comment, .hljs-quote) {
+:root[data-color-scheme="dark"] :is(.hljs-comment, .hljs-quote) {
   color: #abb9a0;
 }
-:root[data-theme="dark"] .hljs-meta {
+:root[data-color-scheme="dark"] .hljs-meta {
   color: #c6c5a3;
 }
-:root[data-theme="dark"] :is(.hljs-attr, .hljs-property, .hljs-variable) {
+:root[data-color-scheme="dark"]
+  :is(.hljs-attr, .hljs-property, .hljs-variable) {
   color: #cad9ad;
 }
 @media (min-width: 1600px) {
@@ -2618,5 +2621,105 @@ button.active {
 @media (max-width: 1200px) {
   .bible-workspace .structure {
     width: 264px;
+  }
+}
+
+/* Compact writing uses the available pane without altering saved typography. */
+:root[data-layout="compact"] .paper {
+  max-width: none;
+  margin: 0;
+  padding: 20px 28px 32px;
+}
+:root[data-layout="compact"] .chapter-eyebrow,
+:root[data-layout="compact"] .chapter-title {
+  display: none;
+}
+:root[data-layout="compact"] .manuscript {
+  line-height: 1.5;
+}
+:root[data-layout="compact"]
+  .manuscript
+  :is(p, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, aside) {
+  margin-top: min(
+    var(--document-margin-top, var(--compact-before, 0px)),
+    16px
+  ) !important;
+  margin-bottom: min(
+    var(--document-margin-bottom, var(--compact-after, 8px)),
+    10px
+  ) !important;
+}
+:root[data-layout="compact"] .manuscript :is(h1, h2, h3, h4, h5, h6) {
+  --compact-before: 16px;
+  --compact-after: 8px;
+}
+:root[data-layout="compact"] .manuscript :is(ul, ol) {
+  --compact-before: 8px;
+  --compact-after: 8px;
+}
+:root[data-layout="compact"] .manuscript li,
+:root[data-layout="compact"] .manuscript li > p {
+  --compact-after: 0px;
+}
+:root[data-layout="compact"] .manuscript p[data-blank-line="true"] {
+  margin: 0 !important;
+  font-size: 12px !important;
+  line-height: 12px !important;
+  min-height: 12px;
+}
+:root[data-layout="compact"]
+  .manuscript
+  p[data-blank-line="true"]
+  :is(span, br) {
+  font-size: 12px !important;
+  line-height: 12px !important;
+}
+.layout-picker {
+  width: auto;
+  max-width: 135px;
+  padding: 5px 7px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 10px;
+}
+.project-title-button {
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  line-height: inherit;
+  padding: 0;
+  width: 100%;
+  overflow-wrap: anywhere;
+}
+.project-title-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.project-rename {
+  width: 100%;
+  margin: 12px 0 8px;
+  padding: 6px;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  font-size: 17px;
+}
+.theme-options {
+  grid-template-columns: repeat(auto-fit, minmax(95px, 1fr));
+}
+.theme-swatch {
+  width: 21px;
+  height: 21px;
+  display: inline-block;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+}
+@media (max-width: 800px) {
+  :root[data-layout="compact"] .paper {
+    padding: 16px;
+  }
+  .layout-picker {
+    max-width: 100px;
   }
 }

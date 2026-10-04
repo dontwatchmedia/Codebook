@@ -14,6 +14,8 @@ import {
   type BookNode,
 } from "../model";
 import { ProgressIcon, SectionIcon, progressOptions } from "./SectionSymbols";
+import EmojiPicker from "./EmojiPicker";
+import InlineRename from "./InlineRename";
 import "./outline.css";
 
 interface Props {
@@ -25,6 +27,8 @@ interface Props {
   onEdit: (node: BookNode) => void;
   onMove: (movingId: string, targetId: string) => void;
   onAddChild: (parentId: string) => void;
+  onRename: (id: string, title: string) => void;
+  onEmojiChange: (id: string, emoji?: string) => void;
 }
 
 export default function OutlineTree({
@@ -36,9 +40,12 @@ export default function OutlineTree({
   onEdit,
   onMove,
   onAddChild,
+  onRename,
+  onEmojiChange,
 }: Props) {
   const tree = useRef<HTMLElement>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const bible = book.mode === "bible";
   const entries = outlineEntries(book);
   const visible = entries.filter(
@@ -66,7 +73,10 @@ export default function OutlineTree({
 
   function navigate(event: KeyboardEvent<HTMLButtonElement>, node: BookNode) {
     const index = visible.findIndex((entry) => entry.node.id === node.id);
-    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+    if (event.key === "F2") {
+      event.preventDefault();
+      setEditingId(node.id);
+    } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
       focusRow(visible[index + (event.key === "ArrowDown" ? 1 : -1)]?.node.id);
     } else if (event.key === "Home" || event.key === "End") {
@@ -84,6 +94,10 @@ export default function OutlineTree({
   }
 
   function dragStart(event: DragEvent<HTMLElement>, id: string) {
+    if (editingId === id) {
+      event.preventDefault();
+      return;
+    }
     event.dataTransfer.setData("text/codebook-node", id);
     event.dataTransfer.effectAllowed = "move";
   }
@@ -101,6 +115,14 @@ export default function OutlineTree({
     setDropTarget(null);
     const movingId = event.dataTransfer.getData("text/codebook-node");
     if (movingId) onMove(movingId, id);
+  }
+
+  function finishRename(id: string, title?: string) {
+    if (title) onRename(id, title);
+    setEditingId(null);
+    requestAnimationFrame(() => {
+      if (document.activeElement === document.body) focusRow(id);
+    });
   }
 
   return (
@@ -123,28 +145,40 @@ export default function OutlineTree({
                 key={node.id}
                 className={`part-row outline-part ${dropTarget === node.id ? "outline-drop-target" : ""}`}
                 style={indent}
-                draggable
+                draggable={editingId !== node.id}
                 onDragStart={(event) => dragStart(event, node.id)}
                 onDragOver={(event) => dragOver(event, node.id)}
                 onDragLeave={() => setDropTarget(null)}
                 onDragEnd={() => setDropTarget(null)}
                 onDrop={(event) => drop(event, node.id)}
               >
-                <button
-                  className="part-name"
-                  data-outline-id={node.id}
-                  title={node.title}
-                  aria-expanded={!collapsed.has(node.id)}
-                  onKeyDown={(event) => navigate(event, node)}
-                  onClick={() => onToggle(node.id)}
-                >
-                  {collapsed.has(node.id) ? (
-                    <ChevronRight size={13} />
-                  ) : (
-                    <ChevronDown size={13} />
-                  )}
-                  <span>{node.title}</span>
-                </button>
+                {editingId === node.id ? (
+                  <div className="part-name outline-part-editing">
+                    <InlineRename
+                      value={node.title}
+                      label={`Rename part ${node.title}`}
+                      onCommit={(title) => finishRename(node.id, title)}
+                      onCancel={() => finishRename(node.id)}
+                    />
+                  </div>
+                ) : (
+                  <button
+                    className="part-name"
+                    data-outline-id={node.id}
+                    title={node.title}
+                    aria-expanded={!collapsed.has(node.id)}
+                    onKeyDown={(event) => navigate(event, node)}
+                    onClick={() => onToggle(node.id)}
+                    onDoubleClick={() => setEditingId(node.id)}
+                  >
+                    {collapsed.has(node.id) ? (
+                      <ChevronRight size={13} />
+                    ) : (
+                      <ChevronDown size={13} />
+                    )}
+                    <span>{node.title}</span>
+                  </button>
+                )}
                 <div className="outline-actions">
                   <button
                     className="row-edit"
@@ -171,6 +205,25 @@ export default function OutlineTree({
           const progress =
             progressOptions.find((option) => option.value === node.progress)
               ?.label || "Not started";
+          const topic = (
+            <span className={bible ? "section-topic" : "chapter-number"}>
+              {bible ? (
+                <SectionIcon icon={node.icon} />
+              ) : node.kind === "chapter" ? (
+                String(number).padStart(2, "0")
+              ) : (
+                <FileText size={14} />
+              )}
+            </span>
+          );
+          const status = bible ? (
+            <ProgressIcon progress={node.progress} />
+          ) : (
+            <span
+              className={`chapter-status-dot status-${node.status.toLowerCase()}`}
+              title={node.status}
+            />
+          );
           return (
             <div
               key={node.id}
@@ -201,36 +254,42 @@ export default function OutlineTree({
                   aria-hidden="true"
                 />
               )}
-              <button
-                className={`chapter-row ${current ? "current" : ""} ${node.parentId ? "nested" : ""}`}
-                data-outline-id={node.id}
-                aria-current={current ? "page" : undefined}
-                title={bible ? `${node.title} · ${progress}` : node.title}
-                draggable
-                onDragStart={(event) => dragStart(event, node.id)}
-                onDragEnd={() => setDropTarget(null)}
-                onKeyDown={(event) => navigate(event, node)}
-                onClick={() => onSelect(node.id)}
-              >
-                <span className={bible ? "section-topic" : "chapter-number"}>
-                  {bible ? (
-                    <SectionIcon icon={node.icon} />
-                  ) : node.kind === "chapter" ? (
-                    String(number).padStart(2, "0")
-                  ) : (
-                    <FileText size={14} />
-                  )}
-                </span>
-                <span className="outline-title">{node.title}</span>
-                {bible ? (
-                  <ProgressIcon progress={node.progress} />
-                ) : (
-                  <span
-                    className={`chapter-status-dot status-${node.status.toLowerCase()}`}
-                    title={node.status}
+              <EmojiPicker
+                title={node.title}
+                value={node.emoji}
+                onChange={(emoji) => onEmojiChange(node.id, emoji)}
+              />
+              {editingId === node.id ? (
+                <div
+                  className={`chapter-row outline-row-editing ${current ? "current" : ""} ${node.parentId ? "nested" : ""}`}
+                >
+                  {topic}
+                  <InlineRename
+                    value={node.title}
+                    label={`Rename ${bible ? "section" : "chapter"} ${node.title}`}
+                    onCommit={(title) => finishRename(node.id, title)}
+                    onCancel={() => finishRename(node.id)}
                   />
-                )}
-              </button>
+                  {status}
+                </div>
+              ) : (
+                <button
+                  className={`chapter-row ${current ? "current" : ""} ${node.parentId ? "nested" : ""}`}
+                  data-outline-id={node.id}
+                  aria-current={current ? "page" : undefined}
+                  title={bible ? `${node.title} · ${progress}` : node.title}
+                  draggable
+                  onDragStart={(event) => dragStart(event, node.id)}
+                  onDragEnd={() => setDropTarget(null)}
+                  onKeyDown={(event) => navigate(event, node)}
+                  onClick={() => onSelect(node.id)}
+                  onDoubleClick={() => setEditingId(node.id)}
+                >
+                  {topic}
+                  <span className="outline-title">{node.title}</span>
+                  {status}
+                </button>
+              )}
               <div className="outline-actions">
                 <button
                   className="row-edit"

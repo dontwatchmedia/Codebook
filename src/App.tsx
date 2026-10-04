@@ -27,9 +27,6 @@ import {
   CircleHelp,
   Upload,
   Save,
-  Sun,
-  Moon,
-  Coffee,
   RotateCcw,
   Command,
   ArrowUp,
@@ -37,14 +34,28 @@ import {
 } from "lucide-react";
 import Library from "./components/Library";
 import ThemeToggle from "./components/ThemeToggle";
+import ThemePicker from "./components/ThemePicker";
 import OutlineTree from "./components/OutlineTree";
+import InlineRename from "./components/InlineRename";
 import {
   SectionIcon,
   ProgressIcon,
   iconOptions,
   progressOptions,
 } from "./components/SectionSymbols";
-import { readTheme, saveTheme } from "./theme";
+import {
+  applyTheme,
+  isDarkTheme,
+  readTheme,
+  saveTheme,
+  themeOptions,
+} from "./theme";
+import {
+  applyLayout,
+  readLayout,
+  saveLayout,
+  type WritingLayout,
+} from "./layout";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import Modal from "./components/Modal";
 import Manuscript from "./editor/Manuscript";
@@ -142,6 +153,11 @@ export default function App() {
     } | null>(null);
   const [newParentId, setNewParentId] = useState<string | null>(null);
   const [newTemplate, setNewTemplate] = useState("technical");
+  const [layout, setLayout] = useState(readLayout);
+  const [projectRename, setProjectRename] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
   const [inspector, setInspector] = useState(true),
     [focus, setFocus] = useState(false),
     [preview, setPreview] = useState(false),
@@ -265,7 +281,7 @@ export default function App() {
     };
   }, []);
   useEffect(() => {
-    document.documentElement.dataset.theme = theme;
+    applyTheme(theme);
     void saveTheme(theme).catch(() =>
       notify(
         "The appearance choice could not be saved. You can still use this theme for this session.",
@@ -273,9 +289,15 @@ export default function App() {
     );
     if (desktop)
       void getCurrentWindow()
-        .setTheme(theme === "dark" ? "dark" : "light")
+        .setTheme(isDarkTheme(theme) ? "dark" : "light")
         .catch(console.error);
   }, [theme]);
+  useEffect(() => {
+    applyLayout(layout);
+    void saveLayout(layout).catch(() =>
+      notify("The writing layout could not be saved."),
+    );
+  }, [layout]);
   useEffect(() => {
     localStorage.setItem("codebook.fontSize", String(fontSize));
   }, [fontSize]);
@@ -487,7 +509,8 @@ export default function App() {
             }}
             settings={() => setDialog("preferences")}
             theme={theme}
-            toggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")}
+            toggleTheme={() => setTheme(isDarkTheme(theme) ? "light" : "dark")}
+            onThemeChange={setTheme}
             edit={(b) => {
               setEditBookId(b.id);
               setDialog("book");
@@ -538,8 +561,9 @@ export default function App() {
               <div className="header-actions">
                 <ThemeToggle
                   theme={theme}
-                  toggle={() => setTheme(theme === "dark" ? "light" : "dark")}
+                  toggle={() => setTheme(isDarkTheme(theme) ? "light" : "dark")}
                 />
+                <ThemePicker theme={theme} onChange={setTheme} />
                 <button
                   className="subtle"
                   onClick={() => {
@@ -574,7 +598,42 @@ export default function App() {
                   <div className="eyebrow">
                     {bible ? "SYSTEM BIBLE" : "THE BOOK"}
                   </div>
-                  <h2>{book.title}</h2>
+                  {projectRename?.id === book.id ? (
+                    <InlineRename
+                      className="project-rename"
+                      label="Rename project"
+                      value={projectRename.title}
+                      onCancel={() => setProjectRename(null)}
+                      onCommit={(title) => {
+                        const current = booksRef.current.find(
+                          (b) => b.id === book.id,
+                        );
+                        if (current) updateBook({ ...current, title });
+                        setProjectRename(null);
+                      }}
+                    />
+                  ) : (
+                    <h2>
+                      <button
+                        className="project-title-button"
+                        title="Double-click or press F2 to rename"
+                        onDoubleClick={() =>
+                          setProjectRename({ id: book.id, title: book.title })
+                        }
+                        onKeyDown={(event) => {
+                          if (event.key === "F2") {
+                            event.preventDefault();
+                            setProjectRename({
+                              id: book.id,
+                              title: book.title,
+                            });
+                          }
+                        }}
+                      >
+                        {book.title}
+                      </button>
+                    </h2>
+                  )}
                   <p>{book.subtitle || "A work in progress"}</p>
                 </div>
                 <div className="structure-label">
@@ -601,6 +660,40 @@ export default function App() {
                     })
                   }
                   onSelect={revealSection}
+                  onRename={(id, title) => {
+                    const current = booksRef.current.find(
+                      (b) => b.id === book.id,
+                    );
+                    if (current)
+                      updateBook({
+                        ...current,
+                        nodes: current.nodes.map((node) =>
+                          node.id === id
+                            ? {
+                                ...node,
+                                title,
+                                ...(node.type === "chapter"
+                                  ? { modified: now() }
+                                  : {}),
+                              }
+                            : node,
+                        ),
+                      });
+                  }}
+                  onEmojiChange={(id, emoji) => {
+                    const current = booksRef.current.find(
+                      (b) => b.id === book.id,
+                    );
+                    if (current)
+                      updateBook({
+                        ...current,
+                        nodes: current.nodes.map((node) =>
+                          node.id === id && node.type === "chapter"
+                            ? { ...node, emoji, modified: now() }
+                            : node,
+                        ),
+                      });
+                  }}
                   onEdit={(node) => {
                     setNodeEdit(node);
                     setDialog(node.type);
@@ -740,6 +833,18 @@ export default function App() {
                     <strong>{chapter?.title}</strong>
                   </div>
                   <div>
+                    <select
+                      className="layout-picker"
+                      aria-label="Writing layout"
+                      title="Compact layout uses more of the screen; original spacing keeps document margins"
+                      value={layout}
+                      onChange={(event) =>
+                        setLayout(event.target.value as WritingLayout)
+                      }
+                    >
+                      <option value="compact">Compact</option>
+                      <option value="original">Original spacing</option>
+                    </select>
                     <button
                       className={`icon-button ${preview ? "active" : ""}`}
                       title="Reading preview"
@@ -1729,24 +1834,36 @@ export default function App() {
         >
           <label>Appearance</label>
           <div className="theme-options">
-            {[
-              ["light", "Light", Sun],
-              ["sepia", "Sepia", Coffee],
-              ["dark", "Dark", Moon],
-            ].map(([id, label, Icon]) => {
-              const I = Icon as typeof Sun;
-              return (
-                <button
-                  key={String(id)}
-                  className={theme === id ? "selected" : ""}
-                  onClick={() => setTheme(String(id))}
-                >
-                  <I size={21} />
-                  {String(label)}
-                </button>
-              );
-            })}
+            {themeOptions.map(({ id, label, swatch, description }) => (
+              <button
+                key={id}
+                className={theme === id ? "selected" : ""}
+                aria-pressed={theme === id}
+                title={description}
+                onClick={() => setTheme(id)}
+              >
+                <span className="theme-swatch" style={{ background: swatch }} />
+                {label}
+              </button>
+            ))}
           </div>
+          <label>
+            Writing layout
+            <select
+              aria-label="Preferred writing layout"
+              value={layout}
+              onChange={(event) =>
+                setLayout(event.target.value as WritingLayout)
+              }
+            >
+              <option value="compact">Compact — use more of the screen</option>
+              <option value="original">Original document spacing</option>
+            </select>
+            <small className="muted">
+              Compact trims display gaps. Saved formatting and exports keep
+              their original spacing.
+            </small>
+          </label>
           <label>
             Manuscript text size <span className="muted">{fontSize} px</span>
             <input

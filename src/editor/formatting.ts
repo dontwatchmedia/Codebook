@@ -1,9 +1,12 @@
 import { Extension, Mark } from "@tiptap/core";
+import { Plugin } from "@tiptap/pm/state";
+import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import {
   parseTextStyle,
   parseBlockStyle,
   textStyleCSS,
   blockStyleCSS,
+  normalizeFormattingValue,
 } from "../formatting";
 
 const textKeys = [
@@ -104,6 +107,33 @@ export const ImportedTextStyle = Mark.create({
 
 export const ImportedBlockStyle = Extension.create({
   name: "importedBlockStyle",
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        props: {
+          decorations(state) {
+            const blanks: Decoration[] = [];
+            state.doc.descendants((node, pos) => {
+              if (node.type.name !== "paragraph" || node.textContent.trim())
+                return;
+              let blank = true;
+              node.forEach((child) => {
+                if (!child.isText && child.type.name !== "hardBreak")
+                  blank = false;
+              });
+              if (blank)
+                blanks.push(
+                  Decoration.node(pos, pos + node.nodeSize, {
+                    "data-blank-line": "true",
+                  }),
+                );
+            });
+            return DecorationSet.create(state.doc, blanks);
+          },
+        },
+      }),
+    ];
+  },
   addGlobalAttributes() {
     return [
       {
@@ -127,7 +157,29 @@ export const ImportedBlockStyle = Extension.create({
                 parseBlockStyle(element)[name],
               renderHTML: (attrs: Record<string, unknown>) => {
                 // One attribute supplies the combined style so split declarations cannot override one another.
-                const style = name === "fontFamily" ? blockStyleCSS(attrs) : "";
+                const style =
+                  name === "fontFamily"
+                    ? [
+                        blockStyleCSS(attrs),
+                        ...(["marginTop", "marginBottom"] as const).flatMap(
+                          (key) => {
+                            const property =
+                              key === "marginTop"
+                                ? "margin-top"
+                                : "margin-bottom";
+                            const value = normalizeFormattingValue(
+                              property,
+                              attrs[key],
+                            );
+                            return value === null
+                              ? []
+                              : [`--document-${property}: ${value}`];
+                          },
+                        ),
+                      ]
+                        .filter(Boolean)
+                        .join("; ")
+                    : "";
                 return presentationAttrs(style, attrs);
               },
             },

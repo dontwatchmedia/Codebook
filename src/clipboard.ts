@@ -88,6 +88,16 @@ function retainDocumentFormatting(parsed: Document) {
           }
         };
         inspect(block, "");
+        // Blank Docs lines still carry a font on their otherwise empty span.
+        // Keep it on the paragraph before the parser discards that empty run.
+        if (
+          !values.length &&
+          !block.textContent?.trim() &&
+          (property === "font-family" || property === "font-size")
+        ) {
+          for (const span of block.querySelectorAll<HTMLElement>("span[style]"))
+            values.push(span.style.getPropertyValue(property));
+        }
         if (
           values.length &&
           values[0] &&

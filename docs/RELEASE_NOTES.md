@@ -1,16 +1,26 @@
-# CodeBook 0.2.1 — Google Docs formatting fix
+# CodeBook 0.2.2 — Compact writing, color themes, and outline shortcuts
 
-CodeBook fixes Google Docs pastes that made normal paragraphs bold and replaced their source typography. Imported formatting now remains part of the saved document.
+CodeBook uses more of your screen, adds seven color themes, and makes titles and section emoji editable directly in the outline.
 
 ## Download
 
 - **[CodeBook.exe](https://github.com/dontwatchmedia/Codebook/releases/latest/download/CodeBook.exe)** — the current portable Windows executable.
-- **CodeBook-0.2.1-Windows.zip** — the same executable with a quick-start guide, README, validation notes, MIT license, and SHA-256 checksum, available in the **[latest release](https://github.com/dontwatchmedia/Codebook/releases/latest)**.
+- **CodeBook-0.2.2-Windows.zip** — the same executable with a quick-start guide, README, validation notes, MIT license, and SHA-256 checksum, available in the **[latest release](https://github.com/dontwatchmedia/Codebook/releases/latest)**.
 - **CodeBook.exe.sha256** — checksum for the executable.
 
 Download the EXE directly, or extract the ZIP and double-click CodeBook.exe. No Node.js, Rust, login, or development server is needed to use it. Requires 64-bit Windows 10/11 and Microsoft Edge WebView2. The executable is unsigned.
 
-## Fixed in 0.2.1
+## New in 0.2.2
+
+- Compact writing is the default: wider use of the editor, smaller page padding, no duplicate display title, capped paragraph/heading gaps, and shorter blank lines. Existing writing benefits immediately; no re-paste is required to tighten its display.
+- Choose **Original spacing** above the editor to view the document's stored margins and spacing. Both layouts retain the same text, fonts, sizes, emphasis, and export data.
+- Choose **Light**, **Sepia**, **Dark**, **Midnight**, **Ocean**, **Rose**, or **Lavender** from Color theme or Preferences. Theme and layout choices survive native restart.
+- Double-click a project title on the left or a chapter, section, or part title in the outline to rename it. F2 also works. Enter saves, Escape cancels, and clicking away saves a valid nonempty name.
+- Choose an emoji beside a section number or icon. Quick choices include progress symbols and topic emoji; a custom single emoji and a clear option are available. Emoji survive saving, reopening, recovery, portable project copies, and text exports.
+- Copied blank lines retain their source font instead of expanding to the editor's larger default font.
+- Theme and layout preference writes merge under a lock so one choice cannot overwrite the other.
+
+## Included from 0.2.1
 
 - Normal-weight Google Docs wrappers no longer make the entire pasted document bold.
 - Supported fonts, sizes, colors, highlights, alignment, paragraph indents, line spacing, paragraph spacing, and list typography remain editable and survive saving, reopening, and native clipboard copying.

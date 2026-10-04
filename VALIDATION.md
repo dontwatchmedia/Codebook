@@ -1,16 +1,16 @@
-# CodeBook 0.2.1 validation
+# CodeBook 0.2.2 validation
 
 Validated on Windows with Node 24, Microsoft Edge, Rust 1.98.1, and the native Tauri/WebView2 runtime.
 
 ## Automated checks
 
-| Check                                                                  | Result           |
-| ---------------------------------------------------------------------- | ---------------- |
-| TypeScript and production Vite build                                   | Pass             |
-| Document, clipboard, hierarchy, export, ordering, and storage tests    | 69 passed        |
-| Browser workflows in Microsoft Edge                                    | 12 passed        |
-| Rust atomic replacement, path validation, and recovery revision checks | 3 passed         |
-| Native application integration                                         | 11 checks passed |
+| Check                                                               | Result           |
+| ------------------------------------------------------------------- | ---------------- |
+| TypeScript and production Vite build                                | Pass             |
+| Document, clipboard, hierarchy, export, ordering, and storage tests | 113 passed       |
+| Browser workflows in Microsoft Edge                                 | 17 passed        |
+| Rust atomic replacement, path validation, recovery and preferences  | 5 passed         |
+| Native application integration                                      | 13 checks passed |
 
 The permanent clipboard test uses the specification's exact Hello World structure: H2, paragraph, C++ code, paragraph with inline code, H3, numbered list. It checks language, whitespace, and inline semantics, plus Markdown export/import round trips.
 
@@ -24,6 +24,8 @@ Google Docs regression fixtures reproduce its normal-weight outer `<b>` wrapper,
 
 ## Native integration
 
+The compact-layout browser workflow compares rendered editor width, vertical gaps, and the first content position with Original spacing. It verifies the capped display margins retain their original values in saved document data. Outline workflows exercise title renaming with double-click, Enter, Escape, blur, empty rejection and F2, plus curated/custom emoji, clearing, persistence and nested section navigation. The seven-theme workflow checks palettes, color scheme, shelf/editor/preferences synchronization, code colors and reload. Unit checks include single-emoji Unicode sequences, invalid input, project saves/recovery/backups and defensive exports; Rust checks cover preference merging and preserving corrupt preference files.
+
 `node scripts/native-smoke.mjs` exercises the compiled release executable with isolated project and WebView directories:
 
 1. Launches the bundled app and its sample book, with no development server.
@@ -36,7 +38,9 @@ Google Docs regression fixtures reproduce its normal-weight outer `<b>` wrapper,
 8. Force-terminates after a deep section edit, restores its journal, and checks the recovered content and complete hierarchy in the native saved file.
 9. Pastes a representative Google Docs HTML fragment into the native editor, checks actual computed font sizes/weights/spacing, and inspects font attributes in the real project file.
 10. Restarts and confirms normal-weight body text, selective bold, and imported font/spacing data survive.
-11. Checks for JavaScript runtime errors throughout the workflow.
+11. Uses Compact layout and Midnight theme, renames the project and chapter directly, selects an emoji, and inspects the actual saved project and merged preferences.
+12. Terminates and restarts the app, then verifies renamed titles, emoji, theme, layout, and retained document typography.
+13. Checks for JavaScript runtime errors throughout the workflow.
 
 The first native crash test exposed WebView2's delayed browser-storage persistence. The implementation was corrected to write an immediate, flushed, atomic recovery file through Rust. The repeated test passed with that change. Recovery cleanup compares revision timestamps so an older completed save cannot delete a newer pending edit.
 
@@ -58,4 +62,4 @@ Reproduce using the commands in `README.md`. Native reports and screenshots are 
 
 ## Package audit
 
-The root, build, and release executable copies have matching SHA-256 hashes. The portable ZIP contains the current executable, quick-start guide, README, validation notes, license, checksum, and the four screenshots referenced by the README. Its embedded executable matches the tested native build; previous executables and user projects are excluded.
+The root, build, and release executable copies have matching SHA-256 hashes. The portable ZIP contains the current executable, quick-start guide, README, validation notes, license, checksum, and the seven screenshots referenced by the README. Its embedded executable matches the tested native build; previous executables and user projects are excluded.

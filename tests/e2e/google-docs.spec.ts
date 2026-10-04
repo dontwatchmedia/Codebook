@@ -150,6 +150,9 @@ test("Google Docs paste preserves fonts, selective bold, spacing, and nested lis
   await page.getByRole("button", { name: "New book", exact: true }).click();
   await page.getByLabel("Book title").fill("Google Docs formatting");
   await page.getByRole("button", { name: "Create book", exact: true }).click();
+  await page
+    .getByLabel("Writing layout", { exact: true })
+    .selectOption("original");
   await page.getByLabel("Chapter title", { exact: true }).fill("Docs source");
   await pasteHTML(page);
   await expectDocsFormatting(page);

@@ -24,6 +24,7 @@ export interface Chapter {
   status: Status;
   progress?: Progress;
   icon?: SectionIconName;
+  emoji?: string;
   tags: string;
   notes: string;
   goal: number;
@@ -54,6 +55,28 @@ export interface Book {
 }
 export const uid = () => crypto.randomUUID();
 export const now = () => new Date().toISOString();
+const sectionEmojiPattern =
+  /^(?:\p{Regional_Indicator}{2}|[0-9#*]\uFE0F?\u20E3|\u{1F3F4}[\u{E0061}-\u{E007A}]{2,7}\u{E007F}|(?:\p{Emoji_Modifier_Base}\uFE0F?\p{Emoji_Modifier}?|\p{Extended_Pictographic}\uFE0F?)(?:\u200D(?:\p{Emoji_Modifier_Base}\uFE0F?\p{Emoji_Modifier}?|\p{Extended_Pictographic}\uFE0F?))*)$/u;
+const sectionEmojiSegmenter =
+  typeof Intl.Segmenter === "function"
+    ? new Intl.Segmenter(undefined, { granularity: "grapheme" })
+    : null;
+/** Accept one short emoji label; an empty result clears the optional marker. */
+export function normalizeSectionEmoji(input: unknown): string | null {
+  if (typeof input !== "string") return null;
+  const value = input.trim();
+  if (!value) return "";
+  if (value.length > 32 || !sectionEmojiPattern.test(value)) return null;
+  if (
+    sectionEmojiSegmenter &&
+    [...sectionEmojiSegmenter.segment(value)].length !== 1
+  )
+    return null;
+  return value;
+}
+export function isValidSectionEmoji(value: unknown): value is string {
+  return typeof value === "string" && normalizeSectionEmoji(value) === value;
+}
 export const emptyDoc = (): JSONContent => ({
   type: "doc",
   content: [{ type: "paragraph" }],
@@ -341,6 +364,7 @@ export function validateBook(value: unknown): value is Book {
     if (
       n.type === "chapter" &&
       ((n.parentId !== null && typeof n.parentId !== "string") ||
+        (n.emoji !== undefined && !isValidSectionEmoji(n.emoji)) ||
         (n.progress !== undefined &&
           ![
             "not-started",

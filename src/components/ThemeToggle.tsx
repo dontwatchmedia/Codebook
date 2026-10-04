@@ -1,4 +1,5 @@
 import { Moon, Sun } from "lucide-react";
+import { isDarkTheme } from "../theme";
 
 export default function ThemeToggle({
   theme,
@@ -7,7 +8,7 @@ export default function ThemeToggle({
   theme: string;
   toggle: () => void;
 }) {
-  const dark = theme === "dark";
+  const dark = isDarkTheme(theme);
   const label = dark ? "Switch to light mode" : "Switch to dark mode";
   return (
     <button

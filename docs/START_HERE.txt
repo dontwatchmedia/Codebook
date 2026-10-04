@@ -1,4 +1,4 @@
-CODEBOOK 0.2.1 — BOOKS AND SYSTEM BIBLES
+CODEBOOK 0.2.2 — BOOKS AND SYSTEM BIBLES
 
 Extract the ZIP, then double-click CodeBook.exe.
 
@@ -6,6 +6,13 @@ No account, internet connection, Node.js, or Rust is needed to write.
 Requires 64-bit Windows 10/11 and Microsoft Edge WebView2.
 
 Open the Learning C++ sample, choose New book, or choose New system bible.
+Compact writing is the default: less padding, tighter gaps, more room for text.
+Use the Compact / Original spacing choice above the editor to switch views.
+This changes the display; your saved typography and exports remain intact.
+Choose Light, Sepia, Dark, Midnight, Ocean, Rose, or Lavender in Color theme.
+Double-click a left-hand title (or press F2) to rename it. Enter saves,
+Escape cancels, and clicking away saves a valid name. Click the emoji
+button beside a section number/icon to choose, paste, or clear an emoji.
 A system bible starts with an Overview. Select a section and choose
 Add child section to build systems, sub-systems, and features below it.
 

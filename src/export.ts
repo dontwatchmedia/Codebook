@@ -1,5 +1,11 @@
 import type { JSONContent } from "@tiptap/core";
-import { chapters, outlineEntries, type Book, type BookNode } from "./model";
+import {
+  chapters,
+  normalizeSectionEmoji,
+  outlineEntries,
+  type Book,
+  type BookNode,
+} from "./model";
 import { lowlight } from "./editor/highlighting";
 import { blockStyleCSS, textStyleCSS } from "./formatting";
 const escape = (s: string) =>
@@ -15,6 +21,11 @@ const safeURL = (s: string) =>
 const mdEscape = (s: string) => s.replace(/([\\`*_[\]<>])/g, "\\$1");
 const styleAttribute = (style: string) =>
   style ? ` style="${escape(style)}"` : "";
+function sectionTitle(node: BookNode): string {
+  const emoji =
+    node.type === "chapter" ? normalizeSectionEmoji(node.emoji) : null;
+  return `${emoji ? emoji + " " : ""}${node.title}`;
+}
 function highlightedCode(content: string, language: string): string {
   if (!language || !lowlight.registered(language)) return escape(content);
   const render = (node: {
@@ -234,7 +245,7 @@ export function exportMarkdown(book: Book) {
       .map((n) =>
         n.type === "part"
           ? `# ${mdEscape(n.title)}\n\n`
-          : `# ${mdEscape(n.title)}\n\n${toMarkdown(n.document)}\n`,
+          : `# ${mdEscape(sectionTitle(n))}\n\n${toMarkdown(n.document)}\n`,
       )
       .join("")
   );
@@ -245,10 +256,13 @@ export function exportHTML(book: Book) {
   return `<!doctype html>\n<html lang="${escape(book.language || "en")}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escape(book.title)}</title><style>body{max-width:760px;margin:64px auto;padding:0 28px;font:18px/1.75 Georgia,serif;color:#252d28;background:#fff}h1,h2,h3{line-height:1.25}header{border-bottom:1px solid #ddd;padding-bottom:36px}nav{margin:40px 0}a{color:#2c6853}section{margin:60px 0;break-before:page}pre{background:#f1f4f2;padding:22px;white-space:pre-wrap;overflow-wrap:anywhere;border:1px solid #dde4df;border-radius:6px;tab-size:4}code{font:0.85em/1.6 Consolas,monospace}p code{background:#eef2ef;padding:2px 4px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccd5cf;padding:8px;text-align:left}img{max-width:100%}aside,blockquote{border-left:3px solid #62927e;padding:12px 24px;background:#f4f7f3}.hljs-keyword,.hljs-selector-tag{color:#8d4a78}.hljs-string{color:#467148}.hljs-number,.hljs-literal{color:#a3673e}.hljs-title,.hljs-type,.hljs-built_in{color:#326b91}.hljs-comment{color:#7c877a;font-style:italic}@media print{body{margin:0;font-size:11pt}nav{break-after:page}pre{break-inside:avoid}}</style></head><body><header><h1>${escape(book.title)}</h1><p>${escape(book.subtitle)}</p><p>${escape(book.author)}</p></header><nav aria-label="Contents"><h2>Contents</h2><ol>${chapters(
     book,
   )
-    .map((c) => `<li><a href="#${escape(c.id)}">${escape(c.title)}</a></li>`)
+    .map(
+      (c) =>
+        `<li><a href="#${escape(c.id)}">${escape(sectionTitle(c))}</a></li>`,
+    )
     .join(
       "",
-    )}</ol></nav>${book.nodes.map((n) => (n.type === "part" ? `<h1>${escape(n.title)}</h1>` : `<section id="${escape(n.id)}"><h1>${escape(n.title)}</h1>${toHTML(n.document)}</section>`)).join("\n")}</body></html>`;
+    )}</ol></nav>${book.nodes.map((n) => (n.type === "part" ? `<h1>${escape(n.title)}</h1>` : `<section id="${escape(n.id)}"><h1>${escape(sectionTitle(n))}</h1>${toHTML(n.document)}</section>`)).join("\n")}</body></html>`;
 }
 
 const sectionIcons: Record<string, string> = {
@@ -307,7 +321,7 @@ function sectionProgress(node: BookNode): string {
     : "";
 }
 function sectionLabel(entry: ExportSection): string {
-  return `${entry.path} ${sectionIcon(entry.node)} ${entry.node.title}`;
+  return `${entry.path} ${sectionIcon(entry.node)} ${sectionTitle(entry.node)}`;
 }
 function exportBibleMarkdown(book: Book): string {
   const entries = exportSections(book);

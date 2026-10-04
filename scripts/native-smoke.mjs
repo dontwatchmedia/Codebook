@@ -145,10 +145,11 @@ async function assertNativeDocsFormatting() {
   });
   expect(boldStyle).toBe("700");
 }
-function assertSavedDocsFormatting(project) {
-  const chapter = project.nodes.find(
-    (node) => node.title === "Native Docs overview",
-  );
+function assertSavedDocsFormatting(
+  project,
+  chapterTitle = "Native Docs overview",
+) {
+  const chapter = project.nodes.find((node) => node.title === chapterTitle);
   expect(chapter, "Native imported chapter exists").toBeDefined();
   const opening = chapter.document.content.find(
     (node) =>
@@ -392,6 +393,9 @@ try {
   await page.getByLabel("Book title").fill("Native Docs paste");
   await page.getByRole("button", { name: "Create book", exact: true }).click();
   await page
+    .getByLabel("Writing layout", { exact: true })
+    .selectOption("original");
+  await page
     .getByLabel("Chapter title", { exact: true })
     .fill("Native Docs overview");
   const lightSwitch = page.getByRole("button", {
@@ -404,7 +408,12 @@ try {
       new URL("../tests/fixtures/google-docs.html", import.meta.url),
       "utf8",
     )
-  ).replace(/>\s+</g, "><");
+  )
+    .replace(/>\s+</g, "><")
+    .replace(
+      "<h2",
+      '<p style="line-height:1.15;margin-bottom:0pt"><span style="font-family:Arial;font-size:11pt"><br></span></p><p style="line-height:1.15;margin-bottom:0pt"><span style="font-family:Arial;font-size:11pt"><br></span></p><h2',
+    );
   await page.getByRole("textbox", { name: "Chapter manuscript" }).focus();
   await page.evaluate((html) => {
     const data = new DataTransfer();
@@ -443,6 +452,107 @@ try {
   );
   evidence.checks.push(
     "Imported Google Docs formatting and normal-weight body text survived a native process restart",
+  );
+  await page
+    .getByLabel("Writing layout", { exact: true })
+    .selectOption("compact");
+  await expect(page.locator(".chapter-title")).not.toBeVisible();
+  const nativeBlankHeights = await page
+    .locator('.manuscript p[data-blank-line="true"]')
+    .evaluateAll((nodes) =>
+      nodes.map((node) => node.getBoundingClientRect().height),
+    );
+  expect(nativeBlankHeights.length).toBeGreaterThanOrEqual(2);
+  for (const height of nativeBlankHeights)
+    expect(height).toBeLessThanOrEqual(24);
+  await expect(page.locator(".manuscript h2").first()).toHaveCSS(
+    "margin-top",
+    "16px",
+  );
+  await page
+    .getByLabel("Color theme", { exact: true })
+    .selectOption("midnight");
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-color-scheme",
+    "dark",
+  );
+  await expect(page.locator(".editor-column")).toHaveCSS(
+    "background-color",
+    "rgb(24, 37, 59)",
+  );
+  await page.locator(".structure-book .project-title-button").dblclick();
+  await page
+    .getByLabel("Rename project", { exact: true })
+    .fill("Native compact workspace");
+  await page.getByLabel("Rename project", { exact: true }).press("Enter");
+  await page
+    .locator(".outline-title")
+    .filter({ hasText: /^Native Docs overview$/ })
+    .dblclick();
+  await page
+    .getByLabel("Rename chapter Native Docs overview", { exact: true })
+    .fill("Compact overview");
+  await page
+    .getByLabel("Rename chapter Native Docs overview", { exact: true })
+    .press("Enter");
+  await page
+    .getByRole("button", { name: "Emoji for Compact overview", exact: true })
+    .click();
+  await page.getByRole("button", { name: "✅ Complete", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Saved on this device", exact: true })
+    .waitFor();
+  const compactBook = (await projectByTitle("Native compact workspace"))
+    .project;
+  expect(
+    compactBook.nodes.find((node) => node.title === "Compact overview").emoji,
+  ).toBe("✅");
+  assertSavedDocsFormatting(compactBook, "Compact overview");
+  await expect
+    .poll(async () =>
+      JSON.parse(
+        await readFile(path.join(booksDir, ".preferences.json"), "utf8"),
+      ),
+    )
+    .toMatchObject({ theme: "midnight", layout: "compact" });
+  await page.screenshot({
+    path: path.join(root, "native-compact-midnight.png"),
+  });
+  evidence.checks.push(
+    "Compact writing, Midnight colors, inline project and chapter renaming, and section emoji worked in the real native app and saved to disk",
+  );
+  await kill();
+  await launch();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "midnight");
+  await expect(page.locator("html")).toHaveAttribute("data-layout", "compact");
+  await page
+    .getByRole("button", { name: "Open Native compact workspace", exact: true })
+    .click();
+  await page
+    .locator(".book-tree .chapter-row")
+    .filter({ hasText: "Compact overview" })
+    .click();
+  await expect(
+    page.getByRole("button", {
+      name: "Emoji for Compact overview",
+      exact: true,
+    }),
+  ).toHaveText("✅");
+  await expect(page.getByLabel("Writing layout", { exact: true })).toHaveValue(
+    "compact",
+  );
+  await expect(page.locator(".chapter-title")).not.toBeVisible();
+  expect(
+    (await projectByTitle("Native compact workspace")).project.nodes.find(
+      (node) => node.title === "Compact overview",
+    ).emoji,
+  ).toBe("✅");
+  assertSavedDocsFormatting(
+    (await projectByTitle("Native compact workspace")).project,
+    "Compact overview",
+  );
+  evidence.checks.push(
+    "Renamed titles, emoji, Midnight theme, and Compact preference all survived termination and native restart without losing document typography",
   );
   expect(evidence.errors).toEqual([]);
   evidence.checks.push("No JavaScript runtime errors during native workflow");

@@ -97,19 +97,66 @@ fn clear_recovery(
 fn storage_path(s: tauri::State<Storage>) -> String {
     s.root.to_string_lossy().into()
 }
+const THEMES: &[&str] = &[
+    "light", "sepia", "dark", "midnight", "ocean", "rose", "lavender",
+];
+const LAYOUTS: &[&str] = &["compact", "original"];
+fn read_preferences(root: &Path) -> Result<Value, String> {
+    let path = root.join(".preferences.json");
+    if !path.exists() {
+        return Ok(json!({}));
+    }
+    let data: Value = serde_json::from_slice(&fs::read(path).map_err(|e| e.to_string())?)
+        .map_err(|e| e.to_string())?;
+    if !data.is_object() {
+        return Err("Invalid preferences file; the original was preserved".into());
+    }
+    Ok(data)
+}
+// Both setters call this while holding the same Storage mutex. Each update
+// rereads and merges the current file before replacing it atomically, so an
+// appearance update and a layout update cannot discard one another's values.
+fn write_preference(root: &Path, key: &str, value: &str) -> Result<(), String> {
+    let mut preferences = read_preferences(root)?;
+    preferences[key] = json!(value);
+    atomic_write(
+        &root.join(".preferences.json"),
+        &serde_json::to_vec(&preferences).map_err(|e| e.to_string())?,
+    )
+}
 #[tauri::command]
 fn get_theme_preference(s: tauri::State<Storage>) -> Result<Option<String>, String> {
     let _guard = s.lock.lock().map_err(|e| e.to_string())?;
-    let path = s.root.join(".preferences.json");
-    if !path.exists() { return Ok(None); }
-    let data: Value = serde_json::from_slice(&fs::read(path).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
-    Ok(data["theme"].as_str().filter(|t| ["light", "dark", "sepia"].contains(t)).map(String::from))
+    let data = read_preferences(&s.root)?;
+    Ok(data["theme"]
+        .as_str()
+        .filter(|t| THEMES.contains(t))
+        .map(String::from))
 }
 #[tauri::command]
 fn set_theme_preference(theme: String, s: tauri::State<Storage>) -> Result<(), String> {
-    if !["light", "dark", "sepia"].contains(&theme.as_str()) { return Err("Unknown theme".into()); }
+    if !THEMES.contains(&theme.as_str()) {
+        return Err("Unknown theme".into());
+    }
     let _guard = s.lock.lock().map_err(|e| e.to_string())?;
-    atomic_write(&s.root.join(".preferences.json"), &serde_json::to_vec(&json!({"theme":theme})).map_err(|e| e.to_string())?)
+    write_preference(&s.root, "theme", &theme)
+}
+#[tauri::command]
+fn get_layout_preference(s: tauri::State<Storage>) -> Result<Option<String>, String> {
+    let _guard = s.lock.lock().map_err(|e| e.to_string())?;
+    let data = read_preferences(&s.root)?;
+    Ok(data["layout"]
+        .as_str()
+        .filter(|value| LAYOUTS.contains(value))
+        .map(String::from))
+}
+#[tauri::command]
+fn set_layout_preference(layout: String, s: tauri::State<Storage>) -> Result<(), String> {
+    if !LAYOUTS.contains(&layout.as_str()) {
+        return Err("Unknown workspace layout".into());
+    }
+    let _guard = s.lock.lock().map_err(|e| e.to_string())?;
+    write_preference(&s.root, "layout", &layout)
 }
 #[tauri::command]
 fn load_library(s: tauri::State<Storage>) -> Result<Value, String> {
@@ -245,7 +292,9 @@ fn main() {
             write_export,
             storage_path,
             get_theme_preference,
-            set_theme_preference
+            set_theme_preference,
+            get_layout_preference,
+            set_layout_preference
         ])
         .run(tauri::generate_context!())
         .expect("Unable to start CodeBook");
@@ -254,6 +303,30 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn appearance_updates_preserve_other_preferences() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(".preferences.json");
+        atomic_write(
+            &path,
+            br#"{"theme":"dark","layout":"original","future":{"keep":true}}"#,
+        )
+        .unwrap();
+        write_preference(dir.path(), "theme", "midnight").unwrap();
+        write_preference(dir.path(), "layout", "compact").unwrap();
+        let saved = read_preferences(dir.path()).unwrap();
+        assert_eq!(saved["theme"], "midnight");
+        assert_eq!(saved["layout"], "compact");
+        assert_eq!(saved["future"]["keep"], true);
+    }
+    #[test]
+    fn invalid_preferences_are_preserved() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(".preferences.json");
+        atomic_write(&path, b"not json").unwrap();
+        assert!(write_preference(dir.path(), "theme", "rose").is_err());
+        assert_eq!(fs::read_to_string(path).unwrap(), "not json");
+    }
     #[test]
     fn atomic_replace_keeps_valid_json() {
         let d = tempfile::tempdir().unwrap();

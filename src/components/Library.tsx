@@ -16,6 +16,8 @@ import { useRef, useState } from "react";
 import { bookWords, chapters, type Book } from "../model";
 import { desktop } from "../storage";
 import ThemeToggle from "./ThemeToggle";
+import ThemePicker from "./ThemePicker";
+import type { Theme } from "../theme";
 import "./outline.css";
 interface Props {
   books: Book[];
@@ -25,6 +27,7 @@ interface Props {
   settings: () => void;
   theme: string;
   toggleTheme: () => void;
+  onThemeChange: (theme: Theme) => void;
   edit: (b: Book) => void;
   importFile: (file: File) => void;
 }
@@ -36,6 +39,7 @@ export default function Library({
   settings,
   theme,
   toggleTheme,
+  onThemeChange,
   edit,
   importFile,
 }: Props) {
@@ -75,7 +79,7 @@ export default function Library({
             <Settings2 size={17} /> Preferences
           </button>
           <div className="rail-version">
-            CODEBOOK <span>0.2.1 · EARLY EDITION</span>
+            CODEBOOK <span>0.2.2 · EARLY EDITION</span>
           </div>
         </div>
       </aside>
@@ -87,6 +91,7 @@ export default function Library({
           </span>
           <div className="library-top-actions">
             <ThemeToggle theme={theme} toggle={toggleTheme} />
+            <ThemePicker theme={theme} onChange={onThemeChange} />
             <button className="subtle" onClick={() => input.current?.click()}>
               <FolderOpen size={16} /> Import project
             </button>

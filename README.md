@@ -16,6 +16,7 @@ Writing a programming book or game system bible means moving between prose, code
 
 - **Write like an author.** Work with books, parts, and chapters through a familiar visual editor.
 - **Organize a living design.** Build a system bible with nested sections, topic icons, and visible progress states.
+- **Make the space yours.** Use a compact writing layout, choose from seven color themes, rename titles with a double-click, and add section emoji beside their numbers.
 - **Treat code as content.** Give code blocks a language, filename, and optional line numbers.
 - **Keep pasted structure.** Preserve headings, lists, links, tables, inline code, and fenced code blocks from supported rich text and Markdown.
 - **Keep your work local.** Save structured project files on your computer, with autosave, recovery journals, and backup snapshots.
@@ -37,6 +38,8 @@ The latest executable is also available directly in the [repository root](CodeBo
 ### Book and chapter organization
 
 - A bookshelf for creating, opening, renaming, and managing books and system bibles.
+- Double-click a project title in the left sidebar, or a chapter, section, or part title in the outline, to rename it. Enter saves, Escape cancels, and clicking away saves a valid name. F2 also starts renaming.
+- Choose an emoji beside each chapter number or section icon. Use a quick choice, paste a single custom emoji, or clear it; numbering and progress stay independent.
 - Parts, chapters, front matter, and back matter.
 - Drag chapters to reorder them or move them between parts.
 - Automatic chapter numbering and keyboard-accessible move actions.
@@ -90,10 +93,16 @@ If an earlier paste became entirely bold or lost its font, update CodeBook and p
 
 ### A comfortable writing environment
 
-- **Dark mode:** use the moon/sun button at the top right of the bookshelf or editor. Your choice is remembered after restarting.
-- Light and sepia themes are also available in **Preferences → Appearance**.
+- **Seven color themes:** choose Light, Sepia, Dark, Midnight, Ocean, Rose, or Lavender in **Color theme** at the top right, or **Preferences → Appearance**. Your choice is remembered after restarting. The moon/sun button remains a quick light/dark switch.
+- **Compact layout:** use more of the editor width, with tighter paragraph gaps and shorter blank lines. It applies to existing documents immediately. Choose **Original spacing** above the editor to restore their stored spacing; saved content and exports retain the original typography in either view.
 - Focus mode, reading preview, typewriter mode, and adjustable manuscript text size.
 - No login, subscription, cloud account, or AI service is required.
+
+![CodeBook compact writing layout showing more content with tight paragraph gaps](docs/images/compact-workspace.png)
+
+![CodeBook Midnight theme with a navy writing surface and readable syntax-highlighted code](docs/images/midnight-editor.png)
+
+![CodeBook Rose theme with pink writing surfaces and berry accents](docs/images/rose-editor.png)
 
 ### Autosave, recovery, and export
 
@@ -137,7 +146,7 @@ Locally inserted image files are embedded in the project. Images pasted as remot
 
 ## Current release and roadmap
 
-CodeBook **0.2.1** fixes Google Docs formatting retention and includes the nested system bibles introduced in 0.2.0. Organize an overview into systems and features, mark progress, paste technical content, edit code, save, reopen, and export.
+CodeBook **0.2.2** adds a compact writing layout, seven color themes, double-click title renaming, and section emoji. It includes Google Docs formatting retention and nested system bibles. Organize an overview into systems and features, mark progress, paste technical content, edit code, save, reopen, and export.
 
 **Available now:** deeply nested sections, topic icons, section progress, rich-text editing, code highlighting, formatted paste, dark mode, local autosave and recovery, book organization, search, and Markdown/HTML export.
 

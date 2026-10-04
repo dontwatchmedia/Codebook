@@ -29,6 +29,35 @@
   --syntax-property: #54743f;
   --shadow: 0 20px 80px #1c302025;
 }
+:root[data-theme="white"] {
+  --bg: #f8fafd;
+  --surface: #ffffff;
+  --paper: #ffffff;
+  --panel: #f1f3f4;
+  --ink: #202124;
+  --muted: #5f6368;
+  --line: #dadce0;
+  --accent: #1a73e8;
+  --accent-soft: #e8f0fe;
+  --warm: #1a73e8;
+  --primary: #1a73e8;
+  --primary-hover: #1765cc;
+  --on-primary: #ffffff;
+  --danger: #c5221f;
+  --code-bg: #f8f9fa;
+  --code-header-bg: #f1f3f4;
+  --code-border: #dadce0;
+  --code-ink: #3c4043;
+  --note-bg: #f8f9fa;
+  --syntax-keyword: #8430a3;
+  --syntax-string: #137333;
+  --syntax-title: #1967d2;
+  --syntax-number: #a14208;
+  --syntax-comment: #5f6368;
+  --syntax-meta: #8e5e00;
+  --syntax-property: #1967d2;
+  --shadow: 0 20px 80px #20212420;
+}
 :root[data-theme="sepia"] {
   --bg: #f1eadc;
   --surface: #faf4e8;
@@ -366,6 +395,50 @@
 }
 :root[data-theme] :is(input:focus, select:focus, textarea:focus) {
   border-color: var(--accent);
+}
+/* Keep the White workspace neutral, including older controls whose colors
+   predate the shared palette. Document color marks remain unchanged. */
+:root[data-theme="white"]
+  :is(.status-dot, .progress-track > span, .column-resize-handle) {
+  background: var(--accent);
+}
+:root[data-theme="white"]
+  :is(
+    .library-note > svg,
+    .library-footer,
+    .export-icon,
+    .structure-book p,
+    .stat-grid strong small,
+    .stat-grid > div > span,
+    .notes-section > small,
+    .inspector-bottom > span
+  ) {
+  color: var(--muted);
+}
+:root[data-theme="white"] .manuscript blockquote {
+  border-color: var(--accent);
+  color: var(--muted);
+}
+:root[data-theme="white"] .manuscript aside:before {
+  color: var(--muted);
+}
+:root[data-theme="white"] .manuscript .ProseMirror-selectednode {
+  outline-color: var(--accent);
+}
+:root[data-theme="white"] .manuscript .selectedCell:after {
+  background: #1a73e830;
+}
+:root[data-theme="white"] .manuscript ::selection {
+  background: #c2d7fa;
+  color: #202124;
+}
+:root[data-theme="white"] .toast {
+  background: var(--ink);
+  border-color: var(--muted);
+  color: var(--surface);
+}
+:root[data-theme="white"] .toast button {
+  color: #aecbfa;
 }
 .theme-picker {
   display: inline-flex;

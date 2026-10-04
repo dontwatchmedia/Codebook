@@ -1,4 +1,4 @@
-CODEBOOK 0.2.3 — BOOKS AND SYSTEM BIBLES
+CODEBOOK 0.2.4 — BOOKS AND SYSTEM BIBLES
 
 Extract the ZIP, then double-click CodeBook.exe.
 
@@ -12,7 +12,9 @@ This changes the display; your saved typography and exports remain intact.
 Use Writing zoom below the editor to match your source's display scale.
 For a browser or Google Docs at 80%, choose 80%. Use 100% to reset.
 Zoom scales pasted text too and is remembered when the app restarts.
-Choose Light, Sepia, Dark, Midnight, Ocean, Rose, or Lavender in Color theme.
+Choose Light, White, Sepia, Dark, Midnight, Ocean, Rose, or Lavender in Color theme.
+White uses pure white paper, gray panels, and blue accents like Google Docs.
+Compact mode also tightens divider gaps in existing writing.
 Double-click a left-hand title (or press F2) to rename it. Enter saves,
 Escape cancels, and clicking away saves a valid name. Click the emoji
 button beside a section number/icon to choose, paste, or clear an emoji.

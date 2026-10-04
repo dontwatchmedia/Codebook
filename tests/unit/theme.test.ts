@@ -22,9 +22,10 @@ describe("Color theme preferences", () => {
     mocks.isTauri.mockReset().mockReturnValue(false);
     applyTheme("light");
   });
-  it("offers seven distinct themes and recognizes both dark palettes", () => {
+  it("offers eight distinct themes and recognizes both dark palettes", () => {
     expect(themeIds).toEqual([
       "light",
+      "white",
       "sepia",
       "dark",
       "midnight",
@@ -32,13 +33,20 @@ describe("Color theme preferences", () => {
       "rose",
       "lavender",
     ]);
-    expect(new Set(themeOptions.map((option) => option.swatch)).size).toBe(7);
+    expect(new Set(themeOptions.map((option) => option.swatch)).size).toBe(8);
     for (const theme of themeIds) expect(isTheme(theme)).toBe(true);
     expect(isTheme("unknown")).toBe(false);
     expect(isTheme(null)).toBe(false);
     expect(isDarkTheme("dark")).toBe(true);
     expect(isDarkTheme("midnight")).toBe(true);
-    for (const theme of ["light", "sepia", "ocean", "rose", "lavender"])
+    for (const theme of [
+      "light",
+      "white",
+      "sepia",
+      "ocean",
+      "rose",
+      "lavender",
+    ])
       expect(isDarkTheme(theme)).toBe(false);
   });
   it("persists and reapplies each palette with the correct native color scheme", async () => {
@@ -68,6 +76,18 @@ describe("Color theme preferences", () => {
     expect(mocks.invoke).toHaveBeenCalledWith("get_theme_preference");
     expect(readTheme()).toBe("midnight");
     expect(document.documentElement.dataset.colorScheme).toBe("dark");
+  });
+  it("loads the White palette from native preferences with a light color scheme", async () => {
+    mocks.isTauri.mockReturnValue(true);
+    mocks.invoke.mockResolvedValue("white");
+    await loadTheme();
+    expect(readTheme()).toBe("white");
+    expect(document.documentElement.dataset.theme).toBe("white");
+    expect(document.documentElement.dataset.colorScheme).toBe("light");
+    await saveTheme("white");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("set_theme_preference", {
+      theme: "white",
+    });
   });
   it("writes rapid native theme changes in their requested order", async () => {
     mocks.isTauri.mockReturnValue(true);

@@ -1,16 +1,22 @@
-# CodeBook 0.2.3 — Writing zoom and accurate document sizing
+# CodeBook 0.2.4 — White theme and compact divider spacing
 
-CodeBook can match the display scale of your source document while keeping its original font sizes intact.
+CodeBook adds clean white paper and removes the oversized gaps around dividers in Compact layout.
 
 ## Download
 
 - **[CodeBook.exe](https://github.com/dontwatchmedia/Codebook/releases/latest/download/CodeBook.exe)** — the current portable Windows executable.
-- **CodeBook-0.2.3-Windows.zip** — the same executable with a quick-start guide, README, validation notes, MIT license, and SHA-256 checksum, available in the **[latest release](https://github.com/dontwatchmedia/Codebook/releases/latest)**.
+- **CodeBook-0.2.4-Windows.zip** — the same executable with a quick-start guide, README, validation notes, MIT license, and SHA-256 checksum, available in the **[latest release](https://github.com/dontwatchmedia/Codebook/releases/latest)**.
 - **CodeBook.exe.sha256** — checksum for the executable.
 
 Download the EXE directly, or extract the ZIP and double-click CodeBook.exe. No Node.js, Rust, login, or development server is needed to use it. Requires 64-bit Windows 10/11 and Microsoft Edge WebView2. The executable is unsigned.
 
-## New in 0.2.3
+## New in 0.2.4
+
+- Choose **White** in Color theme or Preferences for pure white writing paper, neutral gray panels, dark text, and blue accents. Code, notes, selected sections, tables, dialogs, and controls follow the palette. Existing themes remain available.
+- Compact layout now uses **8px** margins around dividers instead of the inherited **30px** margins. Existing pasted writing benefits immediately, with editable blank paragraphs, source fonts, and saved formatting retained. No re-paste is required.
+- White, Compact layout, and Writing zoom are remembered after restarting.
+
+## Included from 0.2.3
 
 - Choose **Writing zoom** below the editor to scale all document text, including pasted headings, paragraphs, and lists, plus code, images, and tables. Choices range from **50%** to **200%**; **100%** resets the display scale.
 - If the source browser or Google Docs uses **80%** zoom, choose **80%** in CodeBook to match its on-screen text size. Point sizes remain original in the saved document, native clipboard, and exports.

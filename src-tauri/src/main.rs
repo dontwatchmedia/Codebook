@@ -98,7 +98,7 @@ fn storage_path(s: tauri::State<Storage>) -> String {
     s.root.to_string_lossy().into()
 }
 const THEMES: &[&str] = &[
-    "light", "sepia", "dark", "midnight", "ocean", "rose", "lavender",
+    "light", "white", "sepia", "dark", "midnight", "ocean", "rose", "lavender",
 ];
 const LAYOUTS: &[&str] = &["compact", "original"];
 const DEFAULT_WRITING_ZOOM: u16 = 100;

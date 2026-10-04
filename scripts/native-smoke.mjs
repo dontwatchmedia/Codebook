@@ -413,6 +413,10 @@ try {
     .replace(
       "<h2",
       '<p style="line-height:1.15;margin-bottom:0pt"><span style="font-family:Arial;font-size:11pt"><br></span></p><p style="line-height:1.15;margin-bottom:0pt"><span style="font-family:Arial;font-size:11pt"><br></span></p><h2',
+    )
+    .replace(
+      "<hr>",
+      '<p style="line-height:1.38;margin-top:0pt;margin-bottom:0pt"></p><hr><p></p>',
     );
   await page.getByRole("textbox", { name: "Chapter manuscript" }).focus();
   await page.evaluate((html) => {
@@ -487,6 +491,27 @@ try {
   await expect(page.locator(".paper")).toHaveCSS("zoom", "0.8");
   const smallerTextHeight = await renderedTextHeight();
   expect(smallerTextHeight / originalTextHeight).toBeCloseTo(0.8, 1);
+  const assertDividerSpacing = async () => {
+    const divider = page.locator(".manuscript hr").first();
+    await expect(divider).toHaveCSS("margin-top", "8px");
+    await expect(divider).toHaveCSS("margin-bottom", "8px");
+    const gap = await divider.evaluate((element) => {
+      const heading = element.nextElementSibling?.nextElementSibling;
+      if (!heading || heading.tagName !== "H2")
+        throw new Error(
+          "Expected editable blank paragraph before next heading",
+        );
+      return (
+        heading.getBoundingClientRect().top -
+        element.getBoundingClientRect().bottom
+      );
+    });
+    expect(gap).toBeLessThanOrEqual(30);
+  };
+  await assertDividerSpacing();
+  evidence.checks.push(
+    "Compact divider margins and measured heading gaps stayed tight at 80% with neighboring blank paragraphs retained",
+  );
   await page
     .getByLabel("Color theme", { exact: true })
     .selectOption("midnight");
@@ -579,6 +604,57 @@ try {
   );
   evidence.checks.push(
     "Renamed titles, emoji, Midnight theme, and Compact preference all survived termination and native restart without losing document typography",
+  );
+  await page.getByLabel("Color theme", { exact: true }).selectOption("white");
+  await expect(page.locator(".editor-column")).toHaveCSS(
+    "background-color",
+    "rgb(255, 255, 255)",
+  );
+  await expect(page.locator(".structure")).toHaveCSS(
+    "background-color",
+    "rgb(241, 243, 244)",
+  );
+  await assertDividerSpacing();
+  await expect
+    .poll(async () =>
+      JSON.parse(
+        await readFile(path.join(booksDir, ".preferences.json"), "utf8"),
+      ),
+    )
+    .toMatchObject({ theme: "white", layout: "compact", writingZoom: 80 });
+  await page
+    .getByRole("button", { name: "Saved on this device", exact: true })
+    .waitFor();
+  await expect
+    .poll(async () => readdir(path.join(booksDir, "recovery")))
+    .toEqual([]);
+  await page.screenshot({ path: path.join(root, "native-white-divider.png") });
+  await kill();
+  await launch();
+  await expect(page.getByLabel("Color theme", { exact: true })).toHaveValue(
+    "white",
+  );
+  await page
+    .getByRole("button", { name: "Open Native compact workspace", exact: true })
+    .click();
+  await page
+    .locator(".book-tree .chapter-row")
+    .filter({ hasText: "Compact overview" })
+    .click();
+  await expect(page.getByLabel("Writing zoom", { exact: true })).toHaveValue(
+    "80",
+  );
+  await expect(page.locator(".editor-column")).toHaveCSS(
+    "background-color",
+    "rgb(255, 255, 255)",
+  );
+  await assertDividerSpacing();
+  assertSavedDocsFormatting(
+    (await projectByTitle("Native compact workspace")).project,
+    "Compact overview",
+  );
+  evidence.checks.push(
+    "White paper, neutral panels, compact divider spacing, and 80% zoom persisted across native restart with original document formatting retained",
   );
   expect(evidence.errors).toEqual([]);
   evidence.checks.push("No JavaScript runtime errors during native workflow");

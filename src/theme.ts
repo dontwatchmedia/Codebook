@@ -9,6 +9,13 @@ export const themeOptions = [
     description: "Ivory paper and forest accents",
   },
   {
+    id: "white",
+    label: "White",
+    dark: false,
+    swatch: "#ffffff",
+    description: "White paper, neutral gray panels, and blue accents",
+  },
+  {
     id: "sepia",
     label: "Sepia",
     dark: false,

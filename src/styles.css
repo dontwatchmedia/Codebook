@@ -2637,6 +2637,11 @@ button.active {
 :root[data-layout="compact"] .manuscript {
   line-height: 1.5;
 }
+/* Dividers need the same compact rhythm as paragraphs and headings. Keep
+   neighboring blank paragraphs editable; only trim the divider's own gaps. */
+:root[data-layout="compact"] .manuscript hr {
+  margin: 8px 0;
+}
 :root[data-layout="compact"]
   .manuscript
   :is(p, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, aside) {

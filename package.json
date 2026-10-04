@@ -1,6 +1,6 @@
 {
   "name": "codebook",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Offline technical book writing software with rich text, syntax-highlighted code, formatted paste, and Markdown/HTML export.",
   "license": "MIT",
   "repository": {

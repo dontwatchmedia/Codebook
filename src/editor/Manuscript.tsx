@@ -37,6 +37,7 @@ interface Props {
   preview: boolean;
   typewriter: boolean;
   fontSize: number;
+  writingZoom: number;
   notify: (message: string) => void;
 }
 export default function Manuscript({
@@ -47,6 +48,7 @@ export default function Manuscript({
   preview,
   typewriter,
   fontSize,
+  writingZoom,
   notify,
 }: Props) {
   const [, redraw] = useState(0),
@@ -435,7 +437,12 @@ export default function Manuscript({
       <div className="paper-scroll">
         <article
           className="paper"
-          style={{ "--editor-size": `${fontSize}px` } as React.CSSProperties}
+          style={
+            {
+              "--editor-size": `${fontSize}px`,
+              zoom: `${writingZoom}%`,
+            } as React.CSSProperties
+          }
         >
           <div className="chapter-eyebrow">
             {systemBible

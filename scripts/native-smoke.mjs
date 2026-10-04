@@ -469,6 +469,24 @@ try {
     "margin-top",
     "16px",
   );
+  const renderedTextHeight = () =>
+    page.locator(".manuscript").evaluate((element) => {
+      const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+      let node;
+      while ((node = walker.nextNode())) {
+        if (node.textContent.includes("describe their purpose")) {
+          const range = document.createRange();
+          range.selectNodeContents(node);
+          return range.getClientRects()[0].height;
+        }
+      }
+      throw new Error("Native imported body not found");
+    });
+  const originalTextHeight = await renderedTextHeight();
+  await page.getByLabel("Writing zoom", { exact: true }).selectOption("80");
+  await expect(page.locator(".paper")).toHaveCSS("zoom", "0.8");
+  const smallerTextHeight = await renderedTextHeight();
+  expect(smallerTextHeight / originalTextHeight).toBeCloseTo(0.8, 1);
   await page
     .getByLabel("Color theme", { exact: true })
     .selectOption("midnight");
@@ -514,7 +532,7 @@ try {
         await readFile(path.join(booksDir, ".preferences.json"), "utf8"),
       ),
     )
-    .toMatchObject({ theme: "midnight", layout: "compact" });
+    .toMatchObject({ theme: "midnight", layout: "compact", writingZoom: 80 });
   await page.screenshot({
     path: path.join(root, "native-compact-midnight.png"),
   });
@@ -532,6 +550,14 @@ try {
     .locator(".book-tree .chapter-row")
     .filter({ hasText: "Compact overview" })
     .click();
+  await expect(page.getByLabel("Writing zoom", { exact: true })).toHaveValue(
+    "80",
+  );
+  await expect(page.locator(".paper")).toHaveCSS("zoom", "0.8");
+  expect((await renderedTextHeight()) / originalTextHeight).toBeCloseTo(0.8, 1);
+  evidence.checks.push(
+    "Writing zoom scaled imported text to 80%, persisted in merged native preferences, and survived restart with original point sizes unchanged",
+  );
   await expect(
     page.getByRole("button", {
       name: "Emoji for Compact overview",

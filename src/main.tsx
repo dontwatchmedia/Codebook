@@ -5,8 +5,12 @@ import "./styles.css";
 import "./components/theme.css";
 import { loadTheme } from "./theme";
 import { loadLayout } from "./layout";
-void Promise.all([loadTheme(), loadLayout()])
-  .catch(console.error)
+import { loadZoom } from "./zoom";
+void Promise.allSettled([loadTheme(), loadLayout(), loadZoom()])
+  .then((results) => {
+    for (const result of results)
+      if (result.status === "rejected") console.error(result.reason);
+  })
   .finally(() =>
     ReactDOM.createRoot(document.getElementById("root")!).render(
       <React.StrictMode>

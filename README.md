@@ -95,7 +95,8 @@ If an earlier paste became entirely bold or lost its font, update CodeBook and p
 
 - **Seven color themes:** choose Light, Sepia, Dark, Midnight, Ocean, Rose, or Lavender in **Color theme** at the top right, or **Preferences → Appearance**. Your choice is remembered after restarting. The moon/sun button remains a quick light/dark switch.
 - **Compact layout:** use more of the editor width, with tighter paragraph gaps and shorter blank lines. It applies to existing documents immediately. Choose **Original spacing** above the editor to restore their stored spacing; saved content and exports retain the original typography in either view.
-- Focus mode, reading preview, typewriter mode, and adjustable manuscript text size.
+- **Writing zoom:** choose a percentage below the editor to scale the entire document, including pasted text. If your source browser or Google Docs is at **80%**, use **80%** here to match its display. Zoom is remembered after restarting and leaves saved font sizes, clipboard formatting, and exports unchanged. **100%** restores the normal display scale.
+- Focus mode, reading preview, typewriter mode, and an adjustable default text size for writing without its own font size.
 - No login, subscription, cloud account, or AI service is required.
 
 ![CodeBook compact writing layout showing more content with tight paragraph gaps](docs/images/compact-workspace.png)
@@ -146,7 +147,7 @@ Locally inserted image files are embedded in the project. Images pasted as remot
 
 ## Current release and roadmap
 
-CodeBook **0.2.2** adds a compact writing layout, seven color themes, double-click title renaming, and section emoji. It includes Google Docs formatting retention and nested system bibles. Organize an overview into systems and features, mark progress, paste technical content, edit code, save, reopen, and export.
+CodeBook **0.2.3** adds writing zoom to match the display scale of copied documents without changing their font sizes. It includes compact layout, seven color themes, double-click title renaming, section emoji, Google Docs formatting retention, and nested system bibles. Organize an overview into systems and features, mark progress, paste technical content, edit code, save, reopen, and export.
 
 **Available now:** deeply nested sections, topic icons, section progress, rich-text editing, code highlighting, formatted paste, dark mode, local autosave and recovery, book organization, search, and Markdown/HTML export.
 

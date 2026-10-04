@@ -101,6 +101,10 @@ const THEMES: &[&str] = &[
     "light", "sepia", "dark", "midnight", "ocean", "rose", "lavender",
 ];
 const LAYOUTS: &[&str] = &["compact", "original"];
+const DEFAULT_WRITING_ZOOM: u16 = 100;
+fn valid_writing_zoom(zoom: u16) -> bool {
+    (50..=200).contains(&zoom)
+}
 fn read_preferences(root: &Path) -> Result<Value, String> {
     let path = root.join(".preferences.json");
     if !path.exists() {
@@ -113,12 +117,12 @@ fn read_preferences(root: &Path) -> Result<Value, String> {
     }
     Ok(data)
 }
-// Both setters call this while holding the same Storage mutex. Each update
+// Preference setters call this while holding the same Storage mutex. Each update
 // rereads and merges the current file before replacing it atomically, so an
 // appearance update and a layout update cannot discard one another's values.
-fn write_preference(root: &Path, key: &str, value: &str) -> Result<(), String> {
+fn write_preference(root: &Path, key: &str, value: Value) -> Result<(), String> {
     let mut preferences = read_preferences(root)?;
-    preferences[key] = json!(value);
+    preferences[key] = value;
     atomic_write(
         &root.join(".preferences.json"),
         &serde_json::to_vec(&preferences).map_err(|e| e.to_string())?,
@@ -139,7 +143,7 @@ fn set_theme_preference(theme: String, s: tauri::State<Storage>) -> Result<(), S
         return Err("Unknown theme".into());
     }
     let _guard = s.lock.lock().map_err(|e| e.to_string())?;
-    write_preference(&s.root, "theme", &theme)
+    write_preference(&s.root, "theme", json!(theme))
 }
 #[tauri::command]
 fn get_layout_preference(s: tauri::State<Storage>) -> Result<Option<String>, String> {
@@ -156,7 +160,33 @@ fn set_layout_preference(layout: String, s: tauri::State<Storage>) -> Result<(),
         return Err("Unknown workspace layout".into());
     }
     let _guard = s.lock.lock().map_err(|e| e.to_string())?;
-    write_preference(&s.root, "layout", &layout)
+    write_preference(&s.root, "layout", json!(layout))
+}
+fn read_writing_zoom(root: &Path) -> u16 {
+    let Ok(data) = read_preferences(root) else {
+        return DEFAULT_WRITING_ZOOM;
+    };
+    data["writingZoom"]
+        .as_u64()
+        .and_then(|zoom| u16::try_from(zoom).ok())
+        .filter(|zoom| valid_writing_zoom(*zoom))
+        .unwrap_or(DEFAULT_WRITING_ZOOM)
+}
+fn write_writing_zoom(root: &Path, zoom: u16) -> Result<(), String> {
+    if !valid_writing_zoom(zoom) {
+        return Err("Writing zoom must be an integer from 50 to 200".into());
+    }
+    write_preference(root, "writingZoom", json!(zoom))
+}
+#[tauri::command]
+fn get_writing_zoom(s: tauri::State<Storage>) -> Result<u16, String> {
+    let _guard = s.lock.lock().map_err(|e| e.to_string())?;
+    Ok(read_writing_zoom(&s.root))
+}
+#[tauri::command]
+fn set_writing_zoom(zoom: u16, s: tauri::State<Storage>) -> Result<(), String> {
+    let _guard = s.lock.lock().map_err(|e| e.to_string())?;
+    write_writing_zoom(&s.root, zoom)
 }
 #[tauri::command]
 fn load_library(s: tauri::State<Storage>) -> Result<Value, String> {
@@ -294,7 +324,9 @@ fn main() {
             get_theme_preference,
             set_theme_preference,
             get_layout_preference,
-            set_layout_preference
+            set_layout_preference,
+            get_writing_zoom,
+            set_writing_zoom
         ])
         .run(tauri::generate_context!())
         .expect("Unable to start CodeBook");
@@ -312,8 +344,8 @@ mod tests {
             br#"{"theme":"dark","layout":"original","future":{"keep":true}}"#,
         )
         .unwrap();
-        write_preference(dir.path(), "theme", "midnight").unwrap();
-        write_preference(dir.path(), "layout", "compact").unwrap();
+        write_preference(dir.path(), "theme", json!("midnight")).unwrap();
+        write_preference(dir.path(), "layout", json!("compact")).unwrap();
         let saved = read_preferences(dir.path()).unwrap();
         assert_eq!(saved["theme"], "midnight");
         assert_eq!(saved["layout"], "compact");
@@ -324,8 +356,63 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join(".preferences.json");
         atomic_write(&path, b"not json").unwrap();
-        assert!(write_preference(dir.path(), "theme", "rose").is_err());
+        assert!(write_preference(dir.path(), "theme", json!("rose")).is_err());
         assert_eq!(fs::read_to_string(path).unwrap(), "not json");
+    }
+    #[test]
+    fn writing_zoom_updates_preserve_appearance_and_future_preferences() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(".preferences.json");
+        atomic_write(
+            &path,
+            br#"{"theme":"rose","layout":"compact","future":{"keep":true}}"#,
+        )
+        .unwrap();
+        write_writing_zoom(dir.path(), 80).unwrap();
+        write_preference(dir.path(), "theme", json!("midnight")).unwrap();
+        let saved = read_preferences(dir.path()).unwrap();
+        assert_eq!(saved["writingZoom"], 80);
+        assert_eq!(saved["theme"], "midnight");
+        assert_eq!(saved["layout"], "compact");
+        assert_eq!(saved["future"]["keep"], true);
+        assert_eq!(read_writing_zoom(dir.path()), 80);
+        let before = fs::read(&path).unwrap();
+        for invalid in [0, 49, 201, u16::MAX] {
+            assert!(write_writing_zoom(dir.path(), invalid).is_err());
+            assert_eq!(fs::read(&path).unwrap(), before);
+        }
+        for zoom in [50, 100, 200] {
+            write_writing_zoom(dir.path(), zoom).unwrap();
+            assert_eq!(read_writing_zoom(dir.path()), zoom);
+        }
+    }
+    #[test]
+    fn missing_or_invalid_writing_zoom_uses_one_hundred_percent() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(".preferences.json");
+        assert_eq!(read_writing_zoom(dir.path()), 100);
+        for invalid in [
+            Value::Null,
+            json!(49),
+            json!(201),
+            json!(-1),
+            json!(80.5),
+            json!("80"),
+            json!(true),
+        ] {
+            atomic_write(
+                &path,
+                &serde_json::to_vec(&json!({"writingZoom": invalid})).unwrap(),
+            )
+            .unwrap();
+            assert_eq!(read_writing_zoom(dir.path()), 100);
+        }
+        for corrupt in [b"not json".as_slice(), b"[]".as_slice()] {
+            atomic_write(&path, corrupt).unwrap();
+            assert_eq!(read_writing_zoom(dir.path()), 100);
+            assert!(write_writing_zoom(dir.path(), 80).is_err());
+            assert_eq!(fs::read(&path).unwrap(), corrupt);
+        }
     }
     #[test]
     fn atomic_replace_keeps_valid_json() {

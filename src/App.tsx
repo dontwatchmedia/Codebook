@@ -57,6 +57,7 @@ import {
   type WritingLayout,
 } from "./layout";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { readZoom, saveZoom } from "./zoom";
 import Modal from "./components/Modal";
 import Manuscript from "./editor/Manuscript";
 import { extensions } from "./editor/extensions";
@@ -154,6 +155,7 @@ export default function App() {
   const [newParentId, setNewParentId] = useState<string | null>(null);
   const [newTemplate, setNewTemplate] = useState("technical");
   const [layout, setLayout] = useState(readLayout);
+  const [writingZoom, setWritingZoom] = useState(readZoom);
   const [projectRename, setProjectRename] = useState<{
     id: string;
     title: string;
@@ -301,6 +303,11 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("codebook.fontSize", String(fontSize));
   }, [fontSize]);
+  useEffect(() => {
+    void saveZoom(writingZoom).catch(() =>
+      notify("The writing zoom could not be saved."),
+    );
+  }, [writingZoom]);
   useEffect(() => {
     const onHide = () => {
       if (document.visibilityState === "hidden") void flush();
@@ -943,6 +950,7 @@ export default function App() {
                     preview={preview}
                     typewriter={typewriter}
                     fontSize={fontSize}
+                    writingZoom={writingZoom}
                     notify={notify}
                   />
                 )}
@@ -956,9 +964,27 @@ export default function App() {
                   <div>
                     <span>{words.toLocaleString()} words</span>
                     <span>{Math.max(1, Math.ceil(words / 225))} min read</span>
-                    <button onClick={() => setDialog("preferences")}>
-                      {fontSize} px <ChevronDown size={11} />
-                    </button>
+                    <select
+                      className="writing-zoom"
+                      aria-label="Writing zoom"
+                      title="Display zoom — saved font sizes stay unchanged"
+                      value={writingZoom}
+                      onChange={(event) =>
+                        setWritingZoom(Number(event.target.value))
+                      }
+                    >
+                      {[50, 60, 70, 75, 80, 90, 100, 110, 125, 150, 175, 200]
+                        .concat(writingZoom)
+                        .filter(
+                          (value, index, all) => all.indexOf(value) === index,
+                        )
+                        .sort((a, b) => a - b)
+                        .map((value) => (
+                          <option key={value} value={value}>
+                            {value}%
+                          </option>
+                        ))}
+                    </select>
                   </div>
                 </footer>
               </main>
@@ -1865,15 +1891,20 @@ export default function App() {
             </small>
           </label>
           <label>
-            Manuscript text size <span className="muted">{fontSize} px</span>
+            Default text size <span className="muted">{fontSize} px</span>
             <input
-              aria-label="Manuscript text size"
+              aria-label="Default text size"
               type="range"
               min="14"
               max="26"
               value={fontSize}
               onChange={(e) => setFontSize(Number(e.target.value))}
             />
+            <small className="muted">
+              Used for text without its own font size. Pasted document sizes
+              stay preserved. Use Writing zoom below the editor to change how
+              large the whole document looks.
+            </small>
           </label>
           <label className="check-label">
             <input

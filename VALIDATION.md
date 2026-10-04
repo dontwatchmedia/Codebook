@@ -1,4 +1,4 @@
-# CodeBook 0.2.2 validation
+# CodeBook 0.2.3 validation
 
 Validated on Windows with Node 24, Microsoft Edge, Rust 1.98.1, and the native Tauri/WebView2 runtime.
 
@@ -7,10 +7,10 @@ Validated on Windows with Node 24, Microsoft Edge, Rust 1.98.1, and the native T
 | Check                                                               | Result           |
 | ------------------------------------------------------------------- | ---------------- |
 | TypeScript and production Vite build                                | Pass             |
-| Document, clipboard, hierarchy, export, ordering, and storage tests | 113 passed       |
-| Browser workflows in Microsoft Edge                                 | 17 passed        |
-| Rust atomic replacement, path validation, recovery and preferences  | 5 passed         |
-| Native application integration                                      | 13 checks passed |
+| Document, clipboard, hierarchy, export, ordering, and storage tests | 120 passed       |
+| Browser workflows in Microsoft Edge                                 | 19 passed        |
+| Rust atomic replacement, path validation, recovery and preferences  | 7 passed         |
+| Native application integration                                      | 14 checks passed |
 
 The permanent clipboard test uses the specification's exact Hello World structure: H2, paragraph, C++ code, paragraph with inline code, H3, numbered list. It checks language, whitespace, and inline semantics, plus Markdown export/import round trips.
 
@@ -26,6 +26,8 @@ Google Docs regression fixtures reproduce its normal-weight outer `<b>` wrapper,
 
 The compact-layout browser workflow compares rendered editor width, vertical gaps, and the first content position with Original spacing. It verifies the capped display margins retain their original values in saved document data. Outline workflows exercise title renaming with double-click, Enter, Escape, blur, empty rejection and F2, plus curated/custom emoji, clearing, persistence and nested section navigation. The seven-theme workflow checks palettes, color scheme, shelf/editor/preferences synchronization, code colors and reload. Unit checks include single-emoji Unicode sequences, invalid input, project saves/recovery/backups and defensive exports; Rust checks cover preference merging and preserving corrupt preference files.
 
+Writing-zoom workflows compare actual rendered text ranges at 100% and 80% for 11pt body text, 23pt main headings, and 17pt secondary headings. Font attributes and saved documents stay unchanged while glyph size and line height scale. Both 80% and 125% reflow inside the available writing pane without horizontal overflow, and the app controls retain their size. Mouse-position edits work in prose, table cells, and syntax-highlighted code at 80%; edits, code metadata, and zoom survive reload. Preference tests cover valid ranges, corrupt values, native read/write failures, ordered updates, and merging zoom with theme/layout without discarding other preferences.
+
 `node scripts/native-smoke.mjs` exercises the compiled release executable with isolated project and WebView directories:
 
 1. Launches the bundled app and its sample book, with no development server.
@@ -39,14 +41,17 @@ The compact-layout browser workflow compares rendered editor width, vertical gap
 9. Pastes a representative Google Docs HTML fragment into the native editor, checks actual computed font sizes/weights/spacing, and inspects font attributes in the real project file.
 10. Restarts and confirms normal-weight body text, selective bold, and imported font/spacing data survive.
 11. Uses Compact layout and Midnight theme, renames the project and chapter directly, selects an emoji, and inspects the actual saved project and merged preferences.
-12. Terminates and restarts the app, then verifies renamed titles, emoji, theme, layout, and retained document typography.
-13. Checks for JavaScript runtime errors throughout the workflow.
+12. Changes Writing zoom to 80%, measures the rendered body text size, and confirms that native preferences store the numeric percentage alongside theme and layout.
+13. Terminates and restarts the app, then verifies the 80% display scale, renamed titles, emoji, theme, layout, and retained original document font sizes.
+14. Checks for JavaScript runtime errors throughout the workflow.
 
 The first native crash test exposed WebView2's delayed browser-storage persistence. The implementation was corrected to write an immediate, flushed, atomic recovery file through Rust. The repeated test passed with that change. Recovery cleanup compares revision timestamps so an older completed save cannot delete a newer pending edit.
 
 ## Visual review
 
 Dark mode was reviewed on the bookshelf, editor, code blocks, inspector, and export dialog. The appearance workflow checks switching from both main screens, preference synchronization, light/sepia fallback, and persistence across reloads. Native integration additionally confirms the dark preference survives process termination and restart. The desktop stores the appearance in a flushed `.preferences.json` file inside the library directory, independent of WebView2's deferred browser-storage writes.
+
+Reviewed the actual native Compact/Midnight editor at 80% writing zoom, with the percentage visible in the footer. Imported typography remains readable, writing uses the available panel width, and the header, sidebar, toolbar, and footer keep their normal scale.
 
 Inspected screenshots of the bookshelf and editor in Edge at 1440 × 1000, and the actual native WebView2 editor at the machine's display scaling. Confirmed the three-pane layout, editable code rendering, line numbers, inspector, and bookshelf were visible without overlapping controls. System-bible screenshots were reviewed in light and dark mode, including the nested outline, progress markers, full breadcrumb path, and section inspector. The actual native executable was also reviewed with a nested system bible.
 

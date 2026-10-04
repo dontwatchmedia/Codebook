@@ -1,16 +1,25 @@
-# CodeBook 0.2.4 — White theme and compact divider spacing
+# CodeBook 0.2.5 — Expanded emoji library and search
 
-CodeBook adds clean white paper and removes the oversized gaps around dividers in Compact layout.
+CodeBook expands section emoji from 25 quick choices to 3,773 searchable offline emoji.
 
 ## Download
 
 - **[CodeBook.exe](https://github.com/dontwatchmedia/Codebook/releases/latest/download/CodeBook.exe)** — the current portable Windows executable.
-- **CodeBook-0.2.4-Windows.zip** — the same executable with a quick-start guide, README, validation notes, MIT license, and SHA-256 checksum, available in the **[latest release](https://github.com/dontwatchmedia/Codebook/releases/latest)**.
+- **CodeBook-0.2.5-Windows.zip** — the same executable with a quick-start guide, README, validation notes, licenses, and SHA-256 checksum, available in the **[latest release](https://github.com/dontwatchmedia/Codebook/releases/latest)**.
 - **CodeBook.exe.sha256** — checksum for the executable.
 
 Download the EXE directly, or extract the ZIP and double-click CodeBook.exe. No Node.js, Rust, login, or development server is needed to use it. Requires 64-bit Windows 10/11 and Microsoft Edge WebView2. The executable is unsigned.
 
-## New in 0.2.4
+## New in 0.2.5
+
+- Choose from **3,773 emoji**, including flags, skin-tone variants, and joined forms. The original 25 progress and topic markers remain first.
+- Search names, English keywords, partial words, aliases such as **done**, **wip**, and **farming**, or paste an emoji to find it directly. Search ignores capitalization and accents and matches all entered words.
+- Filter by category, see result counts, reset an empty search, and browse **84 results at a time** in a scrollable grid.
+- Search opens with keyboard focus. Down enters results; arrows, Home, and End navigate; Enter selects; Escape closes and returns focus to the section's emoji button.
+- Custom single emoji, clearing, saving, recovery, and nested section metadata continue to work. All catalog choices pass the existing save validation.
+- Unicode 15.1 emoji and CLDR 44 English labels are bundled in the app. Search works offline; the portable ZIP includes their copyright and license notice.
+
+## Included from 0.2.4
 
 - Choose **White** in Color theme or Preferences for pure white writing paper, neutral gray panels, dark text, and blue accents. Code, notes, selected sections, tables, dialogs, and controls follow the palette. Existing themes remain available.
 - Compact layout now uses **8px** margins around dividers instead of the inherited **30px** margins. Existing pasted writing benefits immediately, with editable blank paragraphs, source fonts, and saved formatting retained. No re-paste is required.

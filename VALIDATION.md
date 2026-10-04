@@ -1,16 +1,16 @@
-# CodeBook 0.2.4 validation
+# CodeBook 0.2.5 validation
 
 Validated on Windows with Node 24, Microsoft Edge, Rust 1.98.1, and the native Tauri/WebView2 runtime.
 
 ## Automated checks
 
-| Check                                                               | Result           |
-| ------------------------------------------------------------------- | ---------------- |
-| TypeScript and production Vite build                                | Pass             |
-| Document, clipboard, hierarchy, export, ordering, and storage tests | 121 passed       |
-| Browser workflows in Microsoft Edge                                 | 21 passed        |
-| Rust atomic replacement, path validation, recovery and preferences  | 7 passed         |
-| Native application integration                                      | 16 checks passed |
+| Check                                                                      | Result           |
+| -------------------------------------------------------------------------- | ---------------- |
+| TypeScript and production Vite build                                       | Pass             |
+| Document, clipboard, hierarchy, emoji, export, ordering, and storage tests | 128 passed       |
+| Browser workflows in Microsoft Edge                                        | 25 passed        |
+| Rust atomic replacement, path validation, recovery and preferences         | 7 passed         |
+| Native application integration                                             | 18 checks passed |
 
 The permanent clipboard test uses the specification's exact Hello World structure: H2, paragraph, C++ code, paragraph with inline code, H3, numbered list. It checks language, whitespace, and inline semantics, plus Markdown export/import round trips.
 
@@ -19,6 +19,10 @@ Browser workflows cover creating a book, renaming and editing chapters, drag reo
 System-bible workflows also exercise seven child levels below an overview, writing at each level, icons and independent progress states, collapsing branches, search revealing collapsed ancestors, moving complete branches, preventing parent-cycle choices, deleting a parent while preserving children, save/reload, and portable project export/import. An existing book is switched to System bible and back with its code retained. Project settings remain editable when a bible has no word goal.
 
 Model and export unit tests include a 2,500-level hierarchy, cycle rejection, subtree moves and sibling reorder, parent deletion, legacy project compatibility, iterative Markdown/HTML export, and recovery data containing hierarchy and markers. This is a correctness stress check, not a benchmark of interactive performance for thousands of sections.
+
+Emoji catalog checks cover all 3,773 bundled Unicode 15.1 choices: no duplicates, no rejected save values, inclusive skin tones, joined forms, and flags. Search tests cover the original 25 labels and order, status/domain aliases, case and accent normalization, prefixes, multiple words in any order, exact pasted emoji with presentation selectors, category filters, and unknown input. The source regeneration script verifies pinned Unicode and CLDR hashes and reproduces the bundled catalog; the app reads local data only.
+
+Emoji browser workflows exercise search beyond the initial choices, result ranking, category filters, bounded paging, result counts, clear/reset controls, no-result feedback, all arrow keys, Home/End, Enter from search, Escape/focus return, custom validation, clearing, and joined skin-tone selection. Reload checks retain both the selected emoji and a nested section's writing, notes, tags, progress, icon, and parents. Popup bounds are measured at the app's 960 × 650 minimum window size. Closed pickers skip result searches and arrays; an opened picker initially renders 84 choices.
 
 Google Docs regression fixtures reproduce its normal-weight outer `<b>` wrapper, per-run Arial 11pt styles, selectively bold runs, point-sized headings, paragraph alignment, indentation and spacing, nested bullet lists, underline, italic, and color. Browser checks measure computed styles immediately, after native-format clipboard copying, after reload, and in dark mode. List item and marker line heights match the source paragraph spacing. Highlight checks preserve dark text on explicit light backgrounds while transparent backgrounds allow dark-mode ink adaptation. Unit tests also check safe typography HTML round trips, relative-size handling, H6 headings, saved projects/recovery, and rejection of unsafe CSS and native style attributes. These are representative fixtures, not a manual test of the user's external Google document.
 
@@ -45,7 +49,9 @@ Writing-zoom workflows compare actual rendered text ranges at 100% and 80% for 1
 13. Terminates and restarts the app, then verifies the 80% display scale, renamed titles, emoji, theme, layout, and retained original document font sizes.
 14. Measures compact divider margins and the following heading gap while preserving neighboring blank paragraphs.
 15. Switches to White, verifies pure white paper and neutral gray panels, then restarts and checks White, 80% zoom, tight divider spacing, and retained source formatting.
-16. Checks for JavaScript runtime errors throughout the workflow.
+16. Finds Complete through the offline **done** alias and checks the selected emoji in the actual saved project.
+17. Opens the expanded catalog with bounded initial results, searches **DRAG**, selects Dragon, and confirms the emoji survives native restart.
+18. Checks for JavaScript runtime errors throughout the workflow.
 
 The first native crash test exposed WebView2's delayed browser-storage persistence. The implementation was corrected to write an immediate, flushed, atomic recovery file through Rust. The repeated test passed with that change. Recovery cleanup compares revision timestamps so an older completed save cannot delete a newer pending edit.
 
@@ -56,6 +62,8 @@ Dark mode was reviewed on the bookshelf, editor, code blocks, inspector, and exp
 Reviewed the actual native Compact/Midnight editor at 80% writing zoom, with the percentage visible in the footer. Imported typography remains readable, writing uses the available panel width, and the header, sidebar, toolbar, and footer keep their normal scale.
 
 Reviewed the White writing palette and divider-spacing regression screenshots, plus the actual Windows editor in White at 80% zoom. The paper is pure white, controls use blue accents, panels stay neutral gray, and dividers no longer retain the oversized default margins.
+
+Reviewed the expanded emoji picker in White at 960 × 650: search, category, count, scrollable grid, paging, custom input, and clear controls fit within the window. The browser screenshot uses the generic Learning C++ sample. Also reviewed the compiled Windows picker finding Dragon by prefix in White at 80% writing zoom; the native screenshot uses a generic example game document.
 
 Inspected screenshots of the bookshelf and editor in Edge at 1440 × 1000, and the actual native WebView2 editor at the machine's display scaling. Confirmed the three-pane layout, editable code rendering, line numbers, inspector, and bookshelf were visible without overlapping controls. System-bible screenshots were reviewed in light and dark mode, including the nested outline, progress markers, full breadcrumb path, and section inspector. The actual native executable was also reviewed with a nested system bible.
 
@@ -71,4 +79,4 @@ Reproduce using the commands in `README.md`. Native reports and screenshots are 
 
 ## Package audit
 
-The root, build, and release executable copies have matching SHA-256 hashes. The portable ZIP contains the current executable, quick-start guide, README, validation notes, license, checksum, and the eight screenshots referenced by the README. Its embedded executable matches the tested native build; previous executables and user projects are excluded.
+The root, build, and release executable copies have matching SHA-256 hashes. The portable ZIP contains the current executable, quick-start guide, README, validation notes, licenses including the Unicode notice, checksum, and the nine screenshots referenced by the README. Its embedded executable matches the tested native build; previous executables and user projects are excluded.

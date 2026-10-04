@@ -16,7 +16,7 @@ Writing a programming book or game system bible means moving between prose, code
 
 - **Write like an author.** Work with books, parts, and chapters through a familiar visual editor.
 - **Organize a living design.** Build a system bible with nested sections, topic icons, and visible progress states.
-- **Make the space yours.** Use a compact writing layout, choose from seven color themes, rename titles with a double-click, and add section emoji beside their numbers.
+- **Make the space yours.** Use a compact writing layout, choose from eight color themes, rename titles with a double-click, and search 3,773 section emoji beside their numbers.
 - **Treat code as content.** Give code blocks a language, filename, and optional line numbers.
 - **Keep pasted structure.** Preserve headings, lists, links, tables, inline code, and fenced code blocks from supported rich text and Markdown.
 - **Keep your work local.** Save structured project files on your computer, with autosave, recovery journals, and backup snapshots.
@@ -39,11 +39,15 @@ The latest executable is also available directly in the [repository root](CodeBo
 
 - A bookshelf for creating, opening, renaming, and managing books and system bibles.
 - Double-click a project title in the left sidebar, or a chapter, section, or part title in the outline, to rename it. Enter saves, Escape cancels, and clicking away saves a valid name. F2 also starts renaming.
-- Choose an emoji beside each chapter number or section icon. Use a quick choice, paste a single custom emoji, or clear it; numbering and progress stay independent.
+- Choose from **3,773 offline emoji** beside each chapter number or section icon, including flags, skin tones, and joined emoji. Familiar progress and topic symbols remain first.
+- Search emoji names, keywords, partial words, or a pasted emoji. Try **done**, **wip**, **dragon**, **farming**, or **dark skin scientist**. Searches ignore capitalization and accents, and match all the words you enter.
+- Filter by category, browse more results, or use the keyboard: Down moves from search into the grid, arrows move between choices, Enter selects, and Escape closes. You can still paste a single custom emoji or clear it; numbering and progress stay independent.
 - Parts, chapters, front matter, and back matter.
 - Drag chapters to reorder them or move them between parts.
 - Automatic chapter numbering and keyboard-accessible move actions.
 - Book metadata, author name, subtitle, cover color, and word goals.
+
+![CodeBook searchable offline emoji picker with categories and keyword results](docs/images/emoji-search.png)
 
 ### Nested system bibles and game design documents
 
@@ -149,7 +153,7 @@ Locally inserted image files are embedded in the project. Images pasted as remot
 
 ## Current release and roadmap
 
-CodeBook **0.2.4** adds a pure White theme and tightens divider spacing in Compact layout. It includes writing zoom, eight color themes, double-click title renaming, section emoji, Google Docs formatting retention, and nested system bibles. Organize an overview into systems and features, mark progress, paste technical content, edit code, save, reopen, and export.
+CodeBook **0.2.5** expands the section emoji library from 25 choices to 3,773, with offline keyword search, category filters, and keyboard selection. It includes writing zoom, eight color themes, double-click title renaming, Google Docs formatting retention, and nested system bibles. Organize an overview into systems and features, mark progress, paste technical content, edit code, save, reopen, and export.
 
 **Available now:** deeply nested sections, topic icons, section progress, rich-text editing, code highlighting, formatted paste, dark mode, local autosave and recovery, book organization, search, and Markdown/HTML export.
 
@@ -180,7 +184,7 @@ powershell -ExecutionPolicy Bypass -File scripts/desktop.ps1 build
 powershell -ExecutionPolicy Bypass -File scripts/package.ps1
 ```
 
-Packaging places the current **CodeBook.exe** in the project root and creates the portable ZIP in `release/`. It includes only the current executable, documentation, screenshots, license, and checksum. Previous executable copies, development dependencies, local books, and test data are excluded.
+Packaging places the current **CodeBook.exe** in the project root and creates the portable ZIP in `release/`. It includes only the current executable, documentation, screenshots, licenses, and checksum. Previous executable copies, development dependencies, local books, and test data are excluded. Unicode emoji data and English CLDR names are bundled under the license in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md); emoji search makes no network requests.
 
 ## Tests
 

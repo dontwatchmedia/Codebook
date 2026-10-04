@@ -15,13 +15,13 @@ New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
 $releaseExe = Join-Path $releaseDir 'CodeBook.exe'
 Copy-Item -LiteralPath $rootExe -Destination $releaseExe -Force
 Copy-Item -LiteralPath 'docs\START_HERE.txt' -Destination $releaseDir -Force
-Copy-Item -LiteralPath 'README.md','VALIDATION.md','LICENSE' -Destination $releaseDir -Force
+Copy-Item -LiteralPath 'README.md','VALIDATION.md','LICENSE','THIRD_PARTY_NOTICES.md' -Destination $releaseDir -Force
 $hash = (Get-FileHash -LiteralPath $rootExe -Algorithm SHA256).Hash
 Set-Content -LiteralPath (Join-Path $releaseDir 'CodeBook.exe.sha256') -Value "$hash  CodeBook.exe" -Encoding ascii
 Copy-Item -LiteralPath (Join-Path $releaseDir 'CodeBook.exe.sha256') -Destination (Join-Path $workspace 'CodeBook.exe.sha256') -Force
 $version = (Get-Content -Raw -LiteralPath 'package.json' | ConvertFrom-Json).version
 $archive = Join-Path $releaseDir "CodeBook-$version-Windows.zip"
-$files = @('CodeBook.exe','START_HERE.txt','README.md','VALIDATION.md','LICENSE','CodeBook.exe.sha256') | ForEach-Object { Join-Path $releaseDir $_ }
+$files = @('CodeBook.exe','START_HERE.txt','README.md','VALIDATION.md','LICENSE','THIRD_PARTY_NOTICES.md','CodeBook.exe.sha256') | ForEach-Object { Join-Path $releaseDir $_ }
 Add-Type -AssemblyName System.IO.Compression,System.IO.Compression.FileSystem
 $temporaryArchive = Join-Path $releaseDir ("package-" + [guid]::NewGuid().ToString() + '.zip')
 $zip = [IO.Compression.ZipFile]::Open($temporaryArchive, [IO.Compression.ZipArchiveMode]::Create)
@@ -29,7 +29,7 @@ try {
     foreach ($file in $files) {
         [IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $file, [IO.Path]::GetFileName($file)) | Out-Null
     }
-    foreach ($imageName in @('dark-editor.png','dark-bookshelf.png','system-bible-dark.png','google-docs-formatting.png','compact-workspace.png','midnight-editor.png','rose-editor.png','white-editor.png')) {
+    foreach ($imageName in @('dark-editor.png','dark-bookshelf.png','system-bible-dark.png','google-docs-formatting.png','compact-workspace.png','midnight-editor.png','rose-editor.png','white-editor.png','emoji-search.png')) {
         $imagePath = Join-Path $workspace "docs\images\$imageName"
         [IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $imagePath, "docs/images/$imageName") | Out-Null
     }

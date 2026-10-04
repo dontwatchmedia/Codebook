@@ -541,6 +541,9 @@ try {
   await page
     .getByRole("button", { name: "Emoji for Compact overview", exact: true })
     .click();
+  await page
+    .getByRole("searchbox", { name: "Search emojis", exact: true })
+    .fill("done");
   await page.getByRole("button", { name: "✅ Complete", exact: true }).click();
   await page
     .getByRole("button", { name: "Saved on this device", exact: true })
@@ -551,6 +554,9 @@ try {
     compactBook.nodes.find((node) => node.title === "Compact overview").emoji,
   ).toBe("✅");
   assertSavedDocsFormatting(compactBook, "Compact overview");
+  evidence.checks.push(
+    "Offline emoji keyword search found the familiar Complete marker and saved the selection in the native project file",
+  );
   await expect
     .poll(async () =>
       JSON.parse(
@@ -623,6 +629,26 @@ try {
     )
     .toMatchObject({ theme: "white", layout: "compact", writingZoom: 80 });
   await page
+    .getByRole("button", { name: "Emoji for Compact overview", exact: true })
+    .click();
+  const emojiDialog = page.getByRole("dialog", {
+    name: "Choose section emoji",
+    exact: true,
+  });
+  const initialEmojiCount = await emojiDialog.locator(".emoji-choice").count();
+  expect(initialEmojiCount).toBeGreaterThan(25);
+  expect(initialEmojiCount).toBeLessThanOrEqual(100);
+  await emojiDialog
+    .getByRole("searchbox", { name: "Search emojis", exact: true })
+    .fill("DRAG");
+  await expect(
+    emojiDialog.getByRole("button", { name: "🐉 Dragon", exact: true }),
+  ).toBeVisible();
+  await page.screenshot({ path: path.join(root, "native-emoji-search.png") });
+  await emojiDialog
+    .getByRole("button", { name: "🐉 Dragon", exact: true })
+    .click();
+  await page
     .getByRole("button", { name: "Saved on this device", exact: true })
     .waitFor();
   await expect
@@ -649,6 +675,20 @@ try {
     "rgb(255, 255, 255)",
   );
   await assertDividerSpacing();
+  await expect(
+    page.getByRole("button", {
+      name: "Emoji for Compact overview",
+      exact: true,
+    }),
+  ).toHaveText("🐉");
+  expect(
+    (await projectByTitle("Native compact workspace")).project.nodes.find(
+      (node) => node.title === "Compact overview",
+    ).emoji,
+  ).toBe("🐉");
+  evidence.checks.push(
+    "The expanded offline emoji catalog used bounded initial results, found Dragon by uppercase prefix, and retained the choice after native restart",
+  );
   assertSavedDocsFormatting(
     (await projectByTitle("Native compact workspace")).project,
     "Compact overview",

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import type { Editor, JSONContent } from "@tiptap/core";
-import { generateJSON } from "@tiptap/core";
 import {
   ArrowLeft,
   ArrowRight,
@@ -60,7 +59,6 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { readZoom, saveZoom } from "./zoom";
 import Modal from "./components/Modal";
 import Manuscript from "./editor/Manuscript";
-import { extensions } from "./editor/extensions";
 import {
   bookWords,
   chapters,
@@ -86,6 +84,7 @@ import {
   type Status,
   type Progress,
   type SectionIconName,
+  type OutlineDropPlacement,
 } from "./model";
 import {
   clearRecovery,
@@ -100,7 +99,7 @@ import {
   type Backup,
 } from "./storage";
 import { sampleBook } from "./sample";
-import { markdownHTML, sanitizeHTML } from "./clipboard";
+import { parseChapterFile } from "./importChapter";
 import { exportHTML, exportMarkdown } from "./export";
 import { findMatches } from "./search";
 
@@ -186,7 +185,9 @@ export default function App() {
     editorRef = useRef<Editor | null>(null),
     importRef = useRef<HTMLInputElement>(null),
     toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeBookRef = useRef(activeId);
   booksRef.current = books;
+  activeBookRef.current = activeId;
   const book = books.find((b) => b.id === activeId),
     chapter =
       book &&
@@ -368,41 +369,103 @@ export default function App() {
     );
     setDialog(type);
   }
-  async function importFile(file: File) {
-    try {
-      const raw = await file.text();
-      if (/\.(codebook|json)$/i.test(file.name)) {
-        const parsed = JSON.parse(raw);
-        if (!validateBook(parsed))
-          throw new Error("This is not a valid CodeBook project.");
-        const imported = {
-          ...parsed,
-          id: uid(),
-          title: parsed.title,
-          created: now(),
-          modified: now(),
-        };
-        updateBook(imported);
-        openBook(imported);
-        notify("Project imported as an independent copy.");
-      } else {
-        if (!book) throw new Error("Open a book before importing a chapter.");
-        const html = /\.html?$/i.test(file.name)
-          ? sanitizeHTML(raw)
-          : /\.md$/i.test(file.name)
-            ? markdownHTML(raw)
-            : `<p>${raw.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/\n/g, "</p><p>")}</p>`;
-        const c = makeChapter(file.name.replace(/\.[^.]+$/, ""));
-        c.document = generateJSON(html, extensions());
-        if (bible) c.parentId = chapter?.id || null;
-        const imported = insertChapter(book, c);
-        updateBook(imported);
-        revealSection(c.id, imported);
-        notify(`Imported as a new ${sectionName}.`);
+  async function importFiles(
+    files: readonly File[],
+    targetId?: string | null,
+    placement?: OutlineDropPlacement,
+  ) {
+    // Capture the destination before reading files; merge each result into the
+    // latest project so concurrent edits and multi-file imports are retained.
+    const projectId = book?.id;
+    const destination =
+      targetId === undefined
+        ? (bible ? chapter?.id : chapter?.parentId) || null
+        : targetId;
+    const position = placement || (destination ? "inside" : "root");
+    let afterId = destination;
+    let firstChapter: string | null = null;
+    let importedCount = 0;
+    const failures: string[] = [];
+    for (const file of files) {
+      try {
+        const raw = await file.text();
+        if (/\.(codebook|json)$/i.test(file.name)) {
+          const parsed = JSON.parse(raw);
+          if (!validateBook(parsed))
+            throw new Error("This is not a valid CodeBook project.");
+          const imported = {
+            ...parsed,
+            id: uid(),
+            created: now(),
+            modified: now(),
+          };
+          updateBook(imported);
+          openBook(imported);
+          importedCount++;
+          continue;
+        }
+        let current = booksRef.current.find(
+          (candidate) => candidate.id === projectId,
+        );
+        if (!current)
+          throw new Error(
+            "Open a book or system bible before importing chapters.",
+          );
+        const target = destination
+          ? current.nodes.find((node) => node.id === destination)
+          : null;
+        if (destination && !target)
+          throw new Error(
+            "The destination section no longer exists. Try importing again.",
+          );
+        const parsed = parseChapterFile(file.name, raw);
+        const parentId =
+          position === "inside"
+            ? destination
+            : target?.type === "chapter"
+              ? target.parentId
+              : null;
+        const added = makeChapter(parsed.title, parentId);
+        added.document = parsed.document;
+        if (current.mode === "bible") {
+          added.icon = "document";
+          added.goal = 0;
+        }
+        current = insertChapter(current, added);
+        if (position === "before" || position === "after") {
+          current = moveNode(
+            current,
+            added.id,
+            position === "after" ? afterId : destination,
+            position,
+          );
+        }
+        updateBook(current);
+        firstChapter ||= added.id;
+        if (position === "after") afterId = added.id;
+        importedCount++;
+      } catch (error) {
+        failures.push(
+          `${file.name}: ${error instanceof Error ? error.message : String(error)}`,
+        );
       }
-    } catch (e) {
-      notify(`Import failed: ${String(e)}`);
     }
+    const current = booksRef.current.find(
+      (candidate) => candidate.id === projectId,
+    );
+    if (current && firstChapter && activeBookRef.current === projectId)
+      revealSection(firstChapter, current);
+    if (failures.length)
+      notify(
+        `${importedCount ? `Imported ${importedCount} file${importedCount === 1 ? "" : "s"}. ` : ""}Import failed: ${failures.join("; ")}`,
+      );
+    else if (importedCount)
+      notify(
+        `Imported ${importedCount} file${importedCount === 1 ? "" : "s"}.`,
+      );
+  }
+  async function importFile(file: File) {
+    await importFiles([file]);
   }
   function removeNode(node: BookNode) {
     if (!book) return;
@@ -501,7 +564,29 @@ export default function App() {
     );
   return (
     <>
-      <div className={focus ? "app focus-mode" : "app"}>
+      <div
+        className={focus ? "app focus-mode" : "app"}
+        onDragOver={(event) => {
+          if (book && event.dataTransfer.types.includes("Files"))
+            event.preventDefault();
+        }}
+        onDropCapture={(event) => {
+          if (!book || !(event.target instanceof Element)) return;
+          if (
+            event.target.closest(
+              "[data-outline-drop-row], [data-outline-root-drop]",
+            )
+          )
+            return;
+          const files = Array.from(event.dataTransfer.files).filter((file) =>
+            /\.(md|markdown|html?|txt|codebook|json)$/i.test(file.name),
+          );
+          if (!files.length) return;
+          event.preventDefault();
+          event.stopPropagation();
+          void importFiles(files);
+        }}
+      >
         {!book ? (
           <Library
             books={books}
@@ -705,9 +790,18 @@ export default function App() {
                     setNodeEdit(node);
                     setDialog(node.type);
                   }}
-                  onMove={(movingId, targetId) => {
-                    const moved = moveNode(book, movingId, targetId);
-                    if (moved === book) return;
+                  onMove={(movingId, targetId, placement) => {
+                    const current = booksRef.current.find(
+                      (candidate) => candidate.id === book.id,
+                    );
+                    if (!current) return;
+                    const moved = moveNode(
+                      current,
+                      movingId,
+                      targetId,
+                      placement,
+                    );
+                    if (moved === current) return;
                     updateBook(moved);
                     if (
                       chapter &&
@@ -718,6 +812,9 @@ export default function App() {
                     )
                       revealSection(chapter.id, moved);
                   }}
+                  onImportFiles={(files, targetId, placement) =>
+                    void importFiles(files, targetId, placement)
+                  }
                   onAddChild={(parentId) => newNode("chapter", parentId)}
                 />
                 <div className="structure-add">
@@ -738,7 +835,7 @@ export default function App() {
                     </button>
                   )}
                   <button onClick={() => importRef.current?.click()}>
-                    <Upload size={15} /> Import {sectionName}
+                    <Upload size={15} /> Import {sectionName}s
                   </button>
                 </div>
                 <div className="book-progress">
@@ -1079,7 +1176,7 @@ export default function App() {
                       </label>
                     )}
                     <label className="parent-section-label">
-                      {bible ? "Parent section" : "Part"}
+                      {bible ? "Parent section" : "Parent chapter or part"}
                       <select
                         aria-label={bible ? "Parent section" : "Chapter part"}
                         value={chapter.parentId || ""}
@@ -1099,19 +1196,14 @@ export default function App() {
                           });
                         }}
                       >
-                        <option value="">
-                          {bible ? "Top level" : "No part"}
-                        </option>
+                        <option value="">Top level</option>
                         {outlineEntries(book)
                           .filter(
                             ({ node }) =>
                               node.id !== chapter.id &&
                               !descendants(book, chapter.id).some(
                                 (child) => child.id === node.id,
-                              ) &&
-                              (bible ||
-                                node.type === "part" ||
-                                node.id === chapter.parentId),
+                              ),
                           )
                           .map(({ node }) => (
                             <option key={node.id} value={node.id}>
@@ -1536,24 +1628,17 @@ export default function App() {
             {dialog === "chapter" && !nodeEdit && (
               <>
                 <label>
-                  {bible ? "Parent section" : "Part"}
+                  {bible ? "Parent section" : "Parent chapter or part"}
                   <select name="parent" defaultValue={newParentId || ""}>
-                    <option value="">{bible ? "Top level" : "No part"}</option>
-                    {outlineEntries(book)
-                      .filter(
-                        ({ node }) =>
-                          bible ||
-                          node.type === "part" ||
-                          node.id === newParentId,
-                      )
-                      .map(({ node }) => (
-                        <option key={node.id} value={node.id}>
-                          {[
-                            ...ancestors(book, node.id).map((n) => n.title),
-                            node.title,
-                          ].join(" / ")}
-                        </option>
-                      ))}
+                    <option value="">Top level</option>
+                    {outlineEntries(book).map(({ node }) => (
+                      <option key={node.id} value={node.id}>
+                        {[
+                          ...ancestors(book, node.id).map((n) => n.title),
+                          node.title,
+                        ].join(" / ")}
+                      </option>
+                    ))}
                   </select>
                 </label>
                 {bible && (
@@ -2115,10 +2200,12 @@ export default function App() {
         ref={importRef}
         hidden
         type="file"
-        accept=".md,.html,.htm,.txt,.codebook,.json"
+        aria-label="Import chapters"
+        multiple
+        accept=".md,.markdown,.html,.htm,.txt,.codebook,.json"
         onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) void importFile(f);
+          const files = Array.from(e.target.files || []);
+          if (files.length) void importFiles(files);
           e.target.value = "";
         }}
       />

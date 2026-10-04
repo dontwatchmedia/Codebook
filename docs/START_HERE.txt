@@ -1,4 +1,4 @@
-CODEBOOK 0.2.5 — BOOKS AND SYSTEM BIBLES
+CODEBOOK 0.2.6 — BOOKS AND SYSTEM BIBLES
 
 Extract the ZIP, then double-click CodeBook.exe.
 
@@ -24,6 +24,17 @@ Show more emojis to browse. Down enters the grid, arrows move, Enter
 selects, and Escape closes. Custom emoji and Clear remain available.
 A system bible starts with an Overview. Select a section and choose
 Add child section to build systems, sub-systems, and features below it.
+
+Choose Import chapters / Import sections to select multiple .md or .markdown
+files. Each becomes an editable chapter using Google-style Arial typography.
+Headings, lists, emphasis, links, tables, and code structure are preserved.
+The first H1 becomes its title, or the filename is used when there is no H1.
+You can also drag Markdown files from File Explorer onto an outline row.
+Drop in its middle to add children; top/bottom edges insert siblings.
+Drag chapter titles the same way to reorder or nest entire branches.
+Use Move to top level to promote a branch. Child writing and metadata stay
+attached. Task checkboxes retain their states as text markers.
+Local companion images retain caption/path references; they are not embedded.
 
 Use Section icon and Progress in the details panel to mark each section.
 Progress choices are Not started, In progress, Complete, Blocked, and

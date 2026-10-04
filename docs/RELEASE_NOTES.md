@@ -1,16 +1,25 @@
-# CodeBook 0.2.5 — Expanded emoji library and search
+# CodeBook 0.2.6 — Markdown chapters and nested drag and drop
 
-CodeBook expands section emoji from 25 quick choices to 3,773 searchable offline emoji.
+Import multiple Markdown files as editable chapters, then drag them into chapters, subchapters, or deeper sections using visible placement hints.
 
 ## Download
 
 - **[CodeBook.exe](https://github.com/dontwatchmedia/Codebook/releases/latest/download/CodeBook.exe)** — the current portable Windows executable.
-- **CodeBook-0.2.5-Windows.zip** — the same executable with a quick-start guide, README, validation notes, licenses, and SHA-256 checksum, available in the **[latest release](https://github.com/dontwatchmedia/Codebook/releases/latest)**.
+- **CodeBook-0.2.6-Windows.zip** — the same executable with a quick-start guide, README, validation notes, licenses, and SHA-256 checksum, available in the **[latest release](https://github.com/dontwatchmedia/Codebook/releases/latest)**.
 - **CodeBook.exe.sha256** — checksum for the executable.
 
 Download the EXE directly, or extract the ZIP and double-click CodeBook.exe. No Node.js, Rust, login, or development server is needed to use it. Requires 64-bit Windows 10/11 and Microsoft Edge WebView2. The executable is unsigned.
 
-## New in 0.2.5
+## New in 0.2.6
+
+- Select multiple `.md` / `.markdown` files with **Import chapters** or **Import sections**, or drop them directly onto the outline. Each file becomes a separate editable chapter or section, titled from its first H1 or filename.
+- Markdown prose uses **Arial 11pt**, 1.15 line spacing, and compact paragraph gaps. Headings use 22 / 16 / 14 / 12 / 11 / 11pt, with selective emphasis, nested lists, blockquotes, tables, links, dividers, and intact fenced-code language and whitespace.
+- Task-list states remain **☑ / ☐** markers. Supported remote/embedded images remain images; local companion images retain captions and paths as text references.
+- Drag a chapter or section onto another row's middle to nest it. Top/bottom edges insert before/after; **Move to top level** promotes a whole branch. The same drop positions work for incoming Markdown files.
+- Child writing, fonts, code, emoji, progress, and hierarchy stay attached when a branch moves. Invalid parent/descendant drops are blocked; collapsed targets expand for a drop inside them.
+- Parent choices in books now include chapters as well as parts. Windows uses the same frontend drag handler as the browser, enabling file drops and internal chapter dragging.
+
+## Included from 0.2.5
 
 - Choose from **3,773 emoji**, including flags, skin-tone variants, and joined forms. The original 25 progress and topic markers remain first.
 - Search names, English keywords, partial words, aliases such as **done**, **wip**, and **farming**, or paste an emoji to find it directly. Search ignores capitalization and accents and matches all entered words.

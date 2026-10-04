@@ -1,4 +1,4 @@
-# CodeBook 0.2.5 validation
+# CodeBook 0.2.6 validation
 
 Validated on Windows with Node 24, Microsoft Edge, Rust 1.98.1, and the native Tauri/WebView2 runtime.
 
@@ -7,10 +7,10 @@ Validated on Windows with Node 24, Microsoft Edge, Rust 1.98.1, and the native T
 | Check                                                                      | Result           |
 | -------------------------------------------------------------------------- | ---------------- |
 | TypeScript and production Vite build                                       | Pass             |
-| Document, clipboard, hierarchy, emoji, export, ordering, and storage tests | 128 passed       |
-| Browser workflows in Microsoft Edge                                        | 25 passed        |
+| Document, Markdown, clipboard, hierarchy, emoji, export, and storage tests | 146 passed       |
+| Browser workflows in Microsoft Edge                                        | 29 passed        |
 | Rust atomic replacement, path validation, recovery and preferences         | 7 passed         |
-| Native application integration                                             | 18 checks passed |
+| Native application integration                                             | 22 checks passed |
 
 The permanent clipboard test uses the specification's exact Hello World structure: H2, paragraph, C++ code, paragraph with inline code, H3, numbered list. It checks language, whitespace, and inline semantics, plus Markdown export/import round trips.
 
@@ -25,6 +25,10 @@ Emoji catalog checks cover all 3,773 bundled Unicode 15.1 choices: no duplicates
 Emoji browser workflows exercise search beyond the initial choices, result ranking, category filters, bounded paging, result counts, clear/reset controls, no-result feedback, all arrow keys, Home/End, Enter from search, Escape/focus return, custom validation, clearing, and joined skin-tone selection. Reload checks retain both the selected emoji and a nested section's writing, notes, tags, progress, icon, and parents. Popup bounds are measured at the app's 960 × 650 minimum window size. Closed pickers skip result searches and arrays; an opened picker initially renders 84 choices.
 
 Google Docs regression fixtures reproduce its normal-weight outer `<b>` wrapper, per-run Arial 11pt styles, selectively bold runs, point-sized headings, paragraph alignment, indentation and spacing, nested bullet lists, underline, italic, and color. Browser checks measure computed styles immediately, after native-format clipboard copying, after reload, and in dark mode. List item and marker line heights match the source paragraph spacing. Highlight checks preserve dark text on explicit light backgrounds while transparent backgrounds allow dark-mode ink adaptation. Unit tests also check safe typography HTML round trips, relative-size handling, H6 headings, saved projects/recovery, and rejection of unsafe CSS and native style attributes. These are representative fixtures, not a manual test of the user's external Google document.
+
+Markdown file tests cover `.md` and `.markdown`, first-H1 and filename titles, headings 1–6, Arial 11pt prose / 1.15 line spacing, 22pt and 16pt main headings, selective emphasis, nested lists, GFM tables and alignment, links, blockquotes, dividers, supported images, and fenced language/whitespace. Task states become readable checkbox markers without changing literal fenced code. Local image companions retain captions and paths as text references. HTML imports retain original supported typography; TXT stays literal; unsafe source markup is sanitized.
+
+Browser import workflows select multiple files, measure their actual fonts, inspect saved documents, and compare them after reload. Files dropped into rows or before/root positions retain their batch order and become separate sections. Pointer drags exercise before/inside/after/root placement in both books and bibles to four child levels, move whole subtrees, preserve writing and metadata, and reject parent/descendant cycles. Windows sets frontend drag handling as required by the [Tauri configuration](https://v2.tauri.app/reference/config/#windowconfig), and the compiled-app workflow also tests pointer dragging and real local file drops.
 
 ## Native integration
 
@@ -51,7 +55,11 @@ Writing-zoom workflows compare actual rendered text ranges at 100% and 80% for 1
 15. Switches to White, verifies pure white paper and neutral gray panels, then restarts and checks White, 80% zoom, tight divider spacing, and retained source formatting.
 16. Finds Complete through the offline **done** alias and checks the selected emoji in the actual saved project.
 17. Opens the expanded catalog with bounded initial results, searches **DRAG**, selects Dragon, and confirms the emoji survives native restart.
-18. Checks for JavaScript runtime errors throughout the workflow.
+18. Imports three real local Markdown files through the native file input; verifies editable Google-style Arial sizes, selective bold, tables, task states, and exact C++ source in the saved JSON.
+19. Uses real pointer dragging to build a nested three-section branch and move it under another chapter, preserving every imported document.
+20. Dispatches a file-path drag through the compiled WebView to read a real local Markdown file and add it below a subchapter; inspects its stored parent and text.
+21. Terminates and reopens the app, then compares imported documents and their complete nested hierarchy with the saved files.
+22. Checks for JavaScript runtime errors throughout the workflow.
 
 The first native crash test exposed WebView2's delayed browser-storage persistence. The implementation was corrected to write an immediate, flushed, atomic recovery file through Rust. The repeated test passed with that change. Recovery cleanup compares revision timestamps so an older completed save cannot delete a newer pending edit.
 
@@ -67,16 +75,19 @@ Reviewed the expanded emoji picker in White at 960 × 650: search, category, cou
 
 Inspected screenshots of the bookshelf and editor in Edge at 1440 × 1000, and the actual native WebView2 editor at the machine's display scaling. Confirmed the three-pane layout, editable code rendering, line numbers, inspector, and bookshelf were visible without overlapping controls. System-bible screenshots were reviewed in light and dark mode, including the nested outline, progress markers, full breadcrumb path, and section inspector. The actual native executable was also reviewed with a nested system bible.
 
+Reviewed the Markdown import screenshot in White: regular Arial prose, bold/italic runs, lists, table, divider, syntax-highlighted C++ and link are readable with compact spacing. Also reviewed the native Windows file-drop result at 80% zoom, with its nested outline, full breadcrumb, editable parent choice and retained source font.
+
 ## Limits of these results
 
 - A process-crash test is not a hardware power-loss test.
 - The specification's 500,000-word and thousands-of-assets performance targets were not benchmarked.
 - External clipboard applications were represented by regression fixtures; each named application was not manually tested.
 - This release does not include the roadmap's PDF, EPUB, AI, cloud, collaboration, or advanced publishing features.
+- Explorer-style file drops are exercised using WebView2’s drag protocol with real files, rather than manually automating a File Explorer gesture. Internal native chapter dragging uses pointer input.
 - The native smoke test does not drive the Windows Save As dialog; it verifies native filesystem saving and recovery. Browser workflows verify generated/downloaded exports.
 
 Reproduce using the commands in `README.md`. Native reports and screenshots are written to `test-results/native-<timestamp>/` and browser screenshots to `test-results/`.
 
 ## Package audit
 
-The root, build, and release executable copies have matching SHA-256 hashes. The portable ZIP contains the current executable, quick-start guide, README, validation notes, licenses including the Unicode notice, checksum, and the nine screenshots referenced by the README. Its embedded executable matches the tested native build; previous executables and user projects are excluded.
+The root, build, and release executable copies have matching SHA-256 hashes. The portable ZIP contains the current executable, quick-start guide, README, validation notes, licenses including the Unicode notice, checksum, and the ten screenshots referenced by the README. Its embedded executable matches the tested native build; previous executables and user projects are excluded.

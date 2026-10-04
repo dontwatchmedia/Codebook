@@ -43,7 +43,8 @@ The latest executable is also available directly in the [repository root](CodeBo
 - Search emoji names, keywords, partial words, or a pasted emoji. Try **done**, **wip**, **dragon**, **farming**, or **dark skin scientist**. Searches ignore capitalization and accents, and match all the words you enter.
 - Filter by category, browse more results, or use the keyboard: Down moves from search into the grid, arrows move between choices, Enter selects, and Escape closes. You can still paste a single custom emoji or clear it; numbering and progress stay independent.
 - Parts, chapters, front matter, and back matter.
-- Drag chapters to reorder them or move them between parts.
+- Drag a chapter or section by its title. Drop on a row's top or bottom edge to reorder it; drop in the middle to nest it inside that chapter, section, or part. Children move with their parent in both books and system bibles.
+- Drop a branch on **Move to top level** to promote it. The outline shows insertion lines or an inside highlight, and blocks drops that would put a parent inside its own descendant.
 - Automatic chapter numbering and keyboard-accessible move actions.
 - Book metadata, author name, subtitle, cover color, and word goals.
 
@@ -90,6 +91,18 @@ To use an existing book as a system bible, open its settings beside the project 
 - Google Docs paste retains supported fonts, point sizes, selective bold, colors, alignment, paragraph spacing, and nested lists.
 - Imported typography stays with your project after saving and reopening. HTML and `.codebook` exports retain it; Markdown keeps semantic formatting such as headings, bold, and lists.
 - Sanitization of imported HTML to remove scripts and unsafe markup.
+
+### Import Markdown files as chapters
+
+1. Open a book or system bible and choose **Import chapters** or **Import sections**. Select one or several `.md` or `.markdown` files; each becomes an editable chapter or section.
+2. Alternatively, drag the files from File Explorer onto an outline row. Its middle imports them as children; its top or bottom edge imports them as siblings. Drop on **Move to top level** for root chapters.
+3. Drag the imported chapters into the organization you need, including chapters, subchapters, systems, and deeper features.
+
+The first H1 supplies the chapter title when present; otherwise CodeBook uses the filename. Headings stay in the document. Markdown uses **Arial 11pt** prose and **22pt / 16pt** main headings, with 1.15 line spacing and compact paragraph gaps to match the Google Docs-style writing we've established. Lists, emphasis, links, blockquotes, tables, dividers, inline code, and fenced code retain their structure; code language and whitespace remain intact. Task-list states are retained as **☑ / ☐** text markers.
+
+Remote and embedded images remain supported. Local companion images retain their captions and paths as visible references; their files are not automatically embedded. HTML imports retain their supported source typography, and TXT imports remain plain text.
+
+![CodeBook Markdown import with Google-style Arial text, headings, lists, an editable table, and a C++ code block](docs/images/markdown-import.png)
 
 If an earlier paste became entirely bold or lost its font, update CodeBook and paste the original selection again. Earlier versions did not store the discarded source formatting.
 
@@ -153,7 +166,7 @@ Locally inserted image files are embedded in the project. Images pasted as remot
 
 ## Current release and roadmap
 
-CodeBook **0.2.5** expands the section emoji library from 25 choices to 3,773, with offline keyword search, category filters, and keyboard selection. It includes writing zoom, eight color themes, double-click title renaming, Google Docs formatting retention, and nested system bibles. Organize an overview into systems and features, mark progress, paste technical content, edit code, save, reopen, and export.
+CodeBook **0.2.6** adds multiple Markdown-file import with Google Docs-style typography and direct dragging into chapters, subchapters, and deeper sections. It includes 3,773 searchable offline emoji, writing zoom, eight color themes, double-click title renaming, Google Docs formatting retention, and nested system bibles. Organize an overview into systems and features, mark progress, import technical content, edit code, save, reopen, and export.
 
 **Available now:** deeply nested sections, topic icons, section progress, rich-text editing, code highlighting, formatted paste, dark mode, local autosave and recovery, book organization, search, and Markdown/HTML export.
 

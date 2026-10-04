@@ -551,14 +551,80 @@ export function removeNodePreserveChildren(book: Book, id: string): Book {
   return { ...book, nodes, modified: now() };
 }
 
-export function moveNode(book: Book, movingId: string, targetId: string): Book {
+export type OutlineDropPlacement = "before" | "inside" | "after" | "root";
+
+/** Whether an outline drop can move a complete branch without creating a cycle. */
+export function canMoveNode(
+  book: Book,
+  movingId: string,
+  targetId: string | null,
+  placement?: OutlineDropPlacement,
+): boolean {
+  const moving = book.nodes.find((node) => node.id === movingId);
+  if (!moving) return false;
+  if (placement === "root") return true;
+  const target = book.nodes.find((node) => node.id === targetId);
+  if (!target || movingId === targetId) return false;
+  if (descendants(book, movingId).some((node) => node.id === targetId))
+    return false;
+  if (placement === "inside" && moving.type !== "chapter") return false;
+  // Parts remain at the top level. A before/after drop on a nested section
+  // therefore places a part beside the target's enclosing root branch.
+  if (moving.type === "part" && parentOf(target) !== null) {
+    const root = ancestors(book, target.id)[0];
+    if (!root || root.id === movingId) return false;
+  }
+  return true;
+}
+
+export function moveNode(
+  book: Book,
+  movingId: string,
+  targetId: string | null,
+  placement?: OutlineDropPlacement,
+): Book {
+  if (!canMoveNode(book, movingId, targetId, placement)) return book;
+  if (placement !== undefined) {
+    const moving = book.nodes.find((node) => node.id === movingId)!;
+    const target = book.nodes.find((node) => node.id === targetId);
+    const group = subtree(book, moving);
+    const ids = new Set(group.map((node) => node.id));
+    const rest = orderedNodes(book).filter((node) => !ids.has(node.id));
+    let parentId: string | null = null;
+    let index = rest.length;
+    if (placement !== "root" && target) {
+      if (placement === "inside") {
+        parentId = target.id;
+        index = afterSubtree(rest, { ...book, nodes: rest }, target.id);
+      } else {
+        const anchor =
+          moving.type === "part" && parentOf(target) !== null
+            ? ancestors(book, target.id)[0]
+            : target;
+        parentId = parentOf(anchor);
+        index =
+          placement === "before"
+            ? rest.findIndex((node) => node.id === anchor.id)
+            : afterSubtree(rest, { ...book, nodes: rest }, anchor.id);
+      }
+    }
+    if (index < 0) return book;
+    if (moving.type === "chapter" && moving.parentId !== parentId)
+      group[0] = { ...moving, parentId };
+    rest.splice(index, 0, ...group);
+    const current = orderedNodes(book);
+    if (rest.every((node, i) => node === current[i])) return book;
+    return { ...book, nodes: rest, modified: now() };
+  }
+  // Calls without a placement keep the established before-row / first-child
+  // part behavior used by older integrations and saved-project workflows.
   if (movingId === targetId) return book;
   const moving = book.nodes.find((node) => node.id === movingId);
   const target = book.nodes.find((node) => node.id === targetId);
   if (!moving || !target) return book;
   const group = subtree(book, moving);
   const ids = new Set(group.map((node) => node.id));
-  if (ids.has(targetId)) return book;
+  if (ids.has(target.id)) return book;
   const rest = orderedNodes(book).filter((node) => !ids.has(node.id));
   let beforeId = target.id;
   let index = rest.findIndex((node) => node.id === beforeId);

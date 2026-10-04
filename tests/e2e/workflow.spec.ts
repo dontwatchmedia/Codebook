@@ -127,7 +127,7 @@ test("chapter drag ordering and part changes survive reload", async ({
   await openSample(page);
   const variables = page.getByRole("button", { name: /02 Variables & types/ });
   const hello = page.getByRole("button", { name: /01 Hello, World!/ });
-  await variables.dragTo(hello);
+  await variables.dragTo(hello, { targetPosition: { x: 35, y: 2 } });
   await expect(
     page.getByRole("button", { name: /01 Variables & types/ }),
   ).toBeVisible();
@@ -135,7 +135,7 @@ test("chapter drag ordering and part changes survive reload", async ({
   const partId = await page
     .getByLabel("Chapter part")
     .locator("option")
-    .filter({ hasText: "Thinking in programs" })
+    .filter({ hasText: /^Thinking in programs$/ })
     .getAttribute("value");
   await page.getByLabel("Chapter part").selectOption(partId!);
   await page

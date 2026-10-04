@@ -696,6 +696,198 @@ try {
   evidence.checks.push(
     "White paper, neutral panels, compact divider spacing, and 80% zoom persisted across native restart with original document formatting retained",
   );
+  const importDirectory = path.join(root, "markdown-inputs");
+  await mkdir(importDirectory);
+  const nativeMarkdown = [
+    "# Imported systems",
+    "",
+    "Normal text with **selective bold** and `state`.",
+    "",
+    "## Rules",
+    "",
+    "- [x] Finished rule",
+    "- [ ] Pending rule",
+    "",
+    "| System | State |",
+    "| --- | --- |",
+    "| Weather | Ready |",
+    "",
+    "```cpp",
+    "int main() {",
+    "    return 0;",
+    "}",
+    "```",
+  ].join("\n");
+  const importedPaths = ["systems.md", "mechanics.markdown", "behavior.md"].map(
+    (name) => path.join(importDirectory, name),
+  );
+  await writeFile(importedPaths[0], nativeMarkdown);
+  await writeFile(
+    importedPaths[1],
+    "# Mechanics\n\nMechanics retain their own writing.",
+  );
+  await writeFile(
+    importedPaths[2],
+    "# Behavior\n\nBehavior retains its own writing.",
+  );
+  await page
+    .getByLabel("Import chapters", { exact: true })
+    .setInputFiles(importedPaths);
+  const importedTitles = ["Imported systems", "Mechanics", "Behavior"];
+  const importRow = (title) =>
+    page
+      .locator(".chapter-row")
+      .filter({
+        has: page
+          .locator(".outline-title")
+          .filter({ hasText: new RegExp(`^${title}$`) }),
+      });
+  await expect(importRow("Behavior")).toBeVisible();
+  await importRow("Imported systems").click();
+  const importedEditor = page.getByRole("textbox", {
+    name: "Chapter manuscript",
+    exact: true,
+  });
+  await expect(importedEditor.locator("h1")).toHaveText("Imported systems");
+  await expect(importedEditor.locator("h2")).toHaveText("Rules");
+  await expect(importedEditor).toContainText("☑ Finished rule");
+  await expect(importedEditor).toContainText("☐ Pending rule");
+  const importedStyles = await importedEditor.evaluate((element) => {
+    const paragraph = element.querySelector("p");
+    return {
+      body: parseFloat(getComputedStyle(paragraph).fontSize),
+      font: getComputedStyle(paragraph).fontFamily,
+      weight: getComputedStyle(paragraph).fontWeight,
+      title: parseFloat(getComputedStyle(element.querySelector("h1")).fontSize),
+      heading: parseFloat(
+        getComputedStyle(element.querySelector("h2")).fontSize,
+      ),
+      bold: getComputedStyle(paragraph.querySelector("strong")).fontWeight,
+    };
+  });
+  expect(importedStyles.body).toBeCloseTo((11 * 4) / 3, 2);
+  expect(importedStyles.font).toContain("Arial");
+  expect(Number(importedStyles.weight)).toBeLessThan(600);
+  expect(Number(importedStyles.bold)).toBeGreaterThanOrEqual(600);
+  expect(importedStyles.title).toBeCloseTo((22 * 4) / 3, 2);
+  expect(importedStyles.heading).toBeCloseTo((16 * 4) / 3, 2);
+  await page
+    .getByRole("button", { name: "Saved on this device", exact: true })
+    .waitFor();
+  const beforeImportMoves = (await projectByTitle("Native compact workspace"))
+    .project;
+  const importedSystem = beforeImportMoves.nodes.find(
+    (node) => node.title === "Imported systems",
+  );
+  expect(
+    importedSystem.document.content.find((node) => node.type === "paragraph")
+      .attrs,
+  ).toMatchObject({
+    fontFamily: "Arial",
+    fontSize: "11pt",
+    lineHeight: "1.15",
+  });
+  const importedCode = importedSystem.document.content.find(
+    (node) => node.type === "codeBlock",
+  );
+  expect(importedCode.attrs.language).toBe("cpp");
+  expect(importedCode.content.map((node) => node.text || "").join("")).toBe(
+    "int main() {\n    return 0;\n}\n",
+  );
+  evidence.checks.push(
+    "Multiple real Markdown files imported as editable native chapters with Google-style Arial point sizes, selective bold, tables, task states and exact C++ code preserved on disk",
+  );
+  await importRow("Mechanics").dragTo(importRow("Imported systems"));
+  await importRow("Behavior").dragTo(importRow("Mechanics"));
+  await importRow("Imported systems").dragTo(importRow("Compact overview"));
+  await page
+    .getByRole("button", { name: "Saved on this device", exact: true })
+    .waitFor();
+  const afterImportMoves = (await projectByTitle("Native compact workspace"))
+    .project;
+  const namedImportedNode = (project, title) =>
+    project.nodes.find((node) => node.title === title);
+  expect(namedImportedNode(afterImportMoves, "Imported systems").parentId).toBe(
+    namedImportedNode(afterImportMoves, "Compact overview").id,
+  );
+  expect(namedImportedNode(afterImportMoves, "Mechanics").parentId).toBe(
+    namedImportedNode(afterImportMoves, "Imported systems").id,
+  );
+  expect(namedImportedNode(afterImportMoves, "Behavior").parentId).toBe(
+    namedImportedNode(afterImportMoves, "Mechanics").id,
+  );
+  for (const title of importedTitles) {
+    expect(namedImportedNode(afterImportMoves, title).document).toEqual(
+      namedImportedNode(beforeImportMoves, title).document,
+    );
+  }
+  evidence.checks.push(
+    "Real pointer dragging nested imported chapters and moved a complete three-section branch into another chapter in the Windows app without altering its documents",
+  );
+  const droppedPath = path.join(importDirectory, "dropped.md");
+  await writeFile(
+    droppedPath,
+    "# Dropped feature\n\nA file dropped into a subchapter keeps **its formatting**.",
+  );
+  const fileDropRow = page
+    .locator(".outline-row[data-outline-drop-row]")
+    .filter({
+      has: page.locator(".outline-title").filter({ hasText: /^Mechanics$/ }),
+    });
+  await fileDropRow.scrollIntoViewIfNeeded();
+  const fileDropBounds = await fileDropRow.boundingBox();
+  const fileDropSession = await page.context().newCDPSession(page);
+  const dragData = { items: [], files: [droppedPath], dragOperationsMask: 1 };
+  for (const type of ["dragEnter", "dragOver", "drop"]) {
+    await fileDropSession.send("Input.dispatchDragEvent", {
+      type,
+      x: fileDropBounds.x + fileDropBounds.width / 2,
+      y: fileDropBounds.y + fileDropBounds.height / 2,
+      data: dragData,
+    });
+  }
+  await fileDropSession.detach();
+  await expect(importRow("Dropped feature")).toBeVisible();
+  await importRow("Dropped feature").click();
+  await expect(importedEditor).toContainText(
+    "A file dropped into a subchapter keeps",
+  );
+  await page
+    .getByRole("button", { name: "Saved on this device", exact: true })
+    .waitFor();
+  const afterNativeDrop = (await projectByTitle("Native compact workspace"))
+    .project;
+  expect(namedImportedNode(afterNativeDrop, "Dropped feature").parentId).toBe(
+    namedImportedNode(afterNativeDrop, "Mechanics").id,
+  );
+  await page.screenshot({
+    path: path.join(root, "native-markdown-import.png"),
+  });
+  evidence.checks.push(
+    "A file-path drag event through the compiled WebView read a real local Markdown file and imported it directly beneath a subchapter with formatting retained",
+  );
+  await expect
+    .poll(async () => readdir(path.join(booksDir, "recovery")))
+    .toEqual([]);
+  await kill();
+  await launch();
+  await page
+    .getByRole("button", { name: "Open Native compact workspace", exact: true })
+    .click();
+  await importRow("Dropped feature").click();
+  await expect(
+    page.getByRole("textbox", { name: "Chapter manuscript", exact: true }),
+  ).toContainText("A file dropped into a subchapter keeps");
+  const reopenedImports = (await projectByTitle("Native compact workspace"))
+    .project;
+  for (const title of [...importedTitles, "Dropped feature"]) {
+    expect(namedImportedNode(reopenedImports, title)).toEqual(
+      namedImportedNode(afterNativeDrop, title),
+    );
+  }
+  evidence.checks.push(
+    "Imported Markdown, native file-drop content and the complete reparented chapter hierarchy survived native process termination and restart",
+  );
   expect(evidence.errors).toEqual([]);
   evidence.checks.push("No JavaScript runtime errors during native workflow");
   await writeFile(

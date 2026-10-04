@@ -1,4 +1,5 @@
 import type { JSONContent } from "@tiptap/core";
+import { normalizeFormattingValue } from "./formatting";
 export type Status =
   "Idea" | "Outline" | "Draft" | "Revision" | "Editing" | "Final";
 export type Progress =
@@ -169,7 +170,35 @@ const allowedMarks = new Set([
   "strike",
   "code",
   "link",
+  "textStyle",
 ]);
+const formattingProperties: Record<string, string> = {
+  fontFamily: "font-family",
+  fontSize: "font-size",
+  color: "color",
+  backgroundColor: "background-color",
+  textAlign: "text-align",
+  lineHeight: "line-height",
+  marginTop: "margin-top",
+  marginBottom: "margin-bottom",
+  marginLeft: "margin-left",
+  marginRight: "margin-right",
+  textIndent: "text-indent",
+  paddingLeft: "padding-left",
+};
+function validateFormattingAttributes(attrs: unknown): boolean {
+  if (attrs === undefined || attrs === null) return true;
+  if (typeof attrs !== "object" || Array.isArray(attrs)) return false;
+  return Object.entries(formattingProperties).every(([attribute, property]) => {
+    const value = (attrs as Record<string, unknown>)[attribute];
+    return (
+      value === undefined ||
+      value === null ||
+      (typeof value === "string" &&
+        normalizeFormattingValue(property, value) !== null)
+    );
+  });
+}
 export function validateDocument(doc: JSONContent, depth = 0): boolean {
   if (
     !doc ||
@@ -178,11 +207,17 @@ export function validateDocument(doc: JSONContent, depth = 0): boolean {
     !allowedNodes.has(doc.type ?? "")
   )
     return false;
+  if (!validateFormattingAttributes(doc.attrs)) return false;
   if (doc.type === "text" && typeof doc.text !== "string") return false;
   if (
     doc.marks &&
     (!Array.isArray(doc.marks) ||
-      doc.marks.some((m) => !allowedMarks.has(m.type)))
+      doc.marks.some(
+        (m) =>
+          !m ||
+          !allowedMarks.has(m.type) ||
+          !validateFormattingAttributes(m.attrs),
+      ))
   )
     return false;
   const inline = ["text", "hardBreak"];
@@ -233,7 +268,7 @@ export function validateDocument(doc: JSONContent, depth = 0): boolean {
       ))
   )
     return false;
-  if (doc.type === "heading" && ![1, 2, 3, 4].includes(doc.attrs?.level))
+  if (doc.type === "heading" && ![1, 2, 3, 4, 5, 6].includes(doc.attrs?.level))
     return false;
   if (
     doc.marks?.some(

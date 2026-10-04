@@ -1040,7 +1040,9 @@ button.active {
 .manuscript h1,
 .manuscript h2,
 .manuscript h3,
-.manuscript h4 {
+.manuscript h4,
+.manuscript h5,
+.manuscript h6 {
   font-weight: 400;
   line-height: 1.4;
   letter-spacing: -0.4px;
@@ -1054,6 +1056,9 @@ button.active {
 }
 .manuscript h3 {
   font-size: 1.15em;
+}
+.manuscript :is(h1, h2, h3, h4, h5, h6)[style*="font-family"] {
+  letter-spacing: normal;
 }
 .manuscript ul,
 .manuscript ol {
@@ -1070,6 +1075,14 @@ button.active {
   color: #92a080;
   font-size: 0.85em;
 }
+.manuscript li[style*="font-family"] {
+  padding-left: 0;
+}
+.manuscript li[style*="font-family"]::marker {
+  color: inherit;
+  font-family: inherit;
+  font-size: 1em;
+}
 .manuscript p code,
 .manuscript li code {
   font-family: Consolas, "Courier New", monospace;
@@ -1078,6 +1091,14 @@ button.active {
   padding: 3px 5px;
   border-radius: 4px;
   font-size: 0.75em;
+}
+
+/* Source documents normally use black ink; adapt that default to dark paper
+   while keeping the original color in saved data, clipboard HTML, and exports. */
+:root[data-theme="dark"]
+  .manuscript
+  [data-document-ink="default"]:not([data-document-background="explicit"] *) {
+  color: var(--ink) !important;
 }
 .manuscript blockquote {
   border-left: 3px solid #9cac91;

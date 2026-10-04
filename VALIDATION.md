@@ -1,16 +1,16 @@
-# CodeBook 0.2.0 validation
+# CodeBook 0.2.1 validation
 
 Validated on Windows with Node 24, Microsoft Edge, Rust 1.98.1, and the native Tauri/WebView2 runtime.
 
 ## Automated checks
 
-| Check                                                                  | Result          |
-| ---------------------------------------------------------------------- | --------------- |
-| TypeScript and production Vite build                                   | Pass            |
-| Document, clipboard, hierarchy, export, ordering, and storage tests    | 40 passed       |
-| Browser workflows in Microsoft Edge                                    | 10 passed       |
-| Rust atomic replacement, path validation, and recovery revision checks | 3 passed        |
-| Native application integration                                         | 9 checks passed |
+| Check                                                                  | Result           |
+| ---------------------------------------------------------------------- | ---------------- |
+| TypeScript and production Vite build                                   | Pass             |
+| Document, clipboard, hierarchy, export, ordering, and storage tests    | 69 passed        |
+| Browser workflows in Microsoft Edge                                    | 12 passed        |
+| Rust atomic replacement, path validation, and recovery revision checks | 3 passed         |
+| Native application integration                                         | 11 checks passed |
 
 The permanent clipboard test uses the specification's exact Hello World structure: H2, paragraph, C++ code, paragraph with inline code, H3, numbered list. It checks language, whitespace, and inline semantics, plus Markdown export/import round trips.
 
@@ -19,6 +19,8 @@ Browser workflows cover creating a book, renaming and editing chapters, drag reo
 System-bible workflows also exercise seven child levels below an overview, writing at each level, icons and independent progress states, collapsing branches, search revealing collapsed ancestors, moving complete branches, preventing parent-cycle choices, deleting a parent while preserving children, save/reload, and portable project export/import. An existing book is switched to System bible and back with its code retained. Project settings remain editable when a bible has no word goal.
 
 Model and export unit tests include a 2,500-level hierarchy, cycle rejection, subtree moves and sibling reorder, parent deletion, legacy project compatibility, iterative Markdown/HTML export, and recovery data containing hierarchy and markers. This is a correctness stress check, not a benchmark of interactive performance for thousands of sections.
+
+Google Docs regression fixtures reproduce its normal-weight outer `<b>` wrapper, per-run Arial 11pt styles, selectively bold runs, point-sized headings, paragraph alignment, indentation and spacing, nested bullet lists, underline, italic, and color. Browser checks measure computed styles immediately, after native-format clipboard copying, after reload, and in dark mode. List item and marker line heights match the source paragraph spacing. Highlight checks preserve dark text on explicit light backgrounds while transparent backgrounds allow dark-mode ink adaptation. Unit tests also check safe typography HTML round trips, relative-size handling, H6 headings, saved projects/recovery, and rejection of unsafe CSS and native style attributes. These are representative fixtures, not a manual test of the user's external Google document.
 
 ## Native integration
 
@@ -32,7 +34,9 @@ Model and export unit tests include a 2,500-level hierarchy, cycle rejection, su
 6. Creates five nested system-bible sections, writes deep content, and checks the real project file for parent relationships, progress, and icon metadata.
 7. Restarts and verifies deep section content, tree depth, progress, and icon controls.
 8. Force-terminates after a deep section edit, restores its journal, and checks the recovered content and complete hierarchy in the native saved file.
-9. Checks for JavaScript runtime errors throughout the workflow.
+9. Pastes a representative Google Docs HTML fragment into the native editor, checks actual computed font sizes/weights/spacing, and inspects font attributes in the real project file.
+10. Restarts and confirms normal-weight body text, selective bold, and imported font/spacing data survive.
+11. Checks for JavaScript runtime errors throughout the workflow.
 
 The first native crash test exposed WebView2's delayed browser-storage persistence. The implementation was corrected to write an immediate, flushed, atomic recovery file through Rust. The repeated test passed with that change. Recovery cleanup compares revision timestamps so an older completed save cannot delete a newer pending edit.
 
@@ -54,4 +58,4 @@ Reproduce using the commands in `README.md`. Native reports and screenshots are 
 
 ## Package audit
 
-The root, build, and release executable copies have matching SHA-256 hashes. The portable ZIP contains the current executable, quick-start guide, README, validation notes, license, checksum, and the three screenshots referenced by the README. Its embedded executable matches the tested native build; previous executables and user projects are excluded.
+The root, build, and release executable copies have matching SHA-256 hashes. The portable ZIP contains the current executable, quick-start guide, README, validation notes, license, checksum, and the four screenshots referenced by the README. Its embedded executable matches the tested native build; previous executables and user projects are excluded.

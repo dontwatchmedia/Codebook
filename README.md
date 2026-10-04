@@ -80,7 +80,13 @@ To use an existing book as a system bible, open its settings beside the project 
 - 20 language choices, including C++, Python, JavaScript, TypeScript, Rust, Go, Java, C#, SQL, Bash, and PowerShell.
 - Editable code filenames, optional line numbers, indentation, and a copy button.
 - HTML, Markdown, plain-text, and native CodeBook clipboard support.
+- Google Docs paste retains supported fonts, point sizes, selective bold, colors, alignment, paragraph spacing, and nested lists.
+- Imported typography stays with your project after saving and reopening. HTML and `.codebook` exports retain it; Markdown keeps semantic formatting such as headings, bold, and lists.
 - Sanitization of imported HTML to remove scripts and unsafe markup.
+
+If an earlier paste became entirely bold or lost its font, update CodeBook and paste the original selection again. Earlier versions did not store the discarded source formatting.
+
+![Example Google Docs formatting retained in CodeBook, with regular Arial body text, selective bold, headings, and lists](docs/images/google-docs-formatting.png)
 
 ### A comfortable writing environment
 
@@ -131,7 +137,7 @@ Locally inserted image files are embedded in the project. Images pasted as remot
 
 ## Current release and roadmap
 
-CodeBook **0.2.0** adds nested system bibles to the existing technical-book workflow. Organize an overview into systems and features, mark progress, paste technical content, edit code, save, reopen, and export.
+CodeBook **0.2.1** fixes Google Docs formatting retention and includes the nested system bibles introduced in 0.2.0. Organize an overview into systems and features, mark progress, paste technical content, edit code, save, reopen, and export.
 
 **Available now:** deeply nested sections, topic icons, section progress, rich-text editing, code highlighting, formatted paste, dark mode, local autosave and recovery, book organization, search, and Markdown/HTML export.
 

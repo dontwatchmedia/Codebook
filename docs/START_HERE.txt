@@ -1,4 +1,4 @@
-CODEBOOK 0.2 — BOOKS AND SYSTEM BIBLES
+CODEBOOK 0.2.1 — BOOKS AND SYSTEM BIBLES
 
 Extract the ZIP, then double-click CodeBook.exe.
 
@@ -30,3 +30,8 @@ PDF, EPUB, DOCX, AI, sync, and collaboration are not included. See README.md
 for the feature list and limitations, and VALIDATION.md for testing evidence.
 
 The executable is unsigned.
+
+Google Docs paste keeps supported fonts, sizes, bold, and spacing.
+If an earlier paste lost its formatting, select it and paste from the
+original document again after opening this version. HTML and CodeBook
+project exports keep visual styles; Markdown keeps text structure.

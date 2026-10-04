@@ -90,6 +90,100 @@ function assertBible(project, content) {
   expect(placement.icon).toBe("hammer");
   expect(JSON.stringify(placement.document)).toContain(content);
 }
+async function assertNativeDocsFormatting() {
+  const editor = page.getByRole("textbox", { name: "Chapter manuscript" });
+  await expect(editor).toContainText("Example Game — System Bible");
+  const styles = await editor.evaluate((element) => {
+    const textStyle = (wanted) => {
+      const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+      let node;
+      while ((node = walker.nextNode())) {
+        if (node.textContent?.includes(wanted)) {
+          const css = getComputedStyle(node.parentElement);
+          return {
+            fontFamily: css.fontFamily,
+            fontSize: parseFloat(css.fontSize),
+            fontWeight: css.fontWeight,
+          };
+        }
+      }
+      throw new Error("Native pasted text not found: " + wanted);
+    };
+    const opening = [...element.querySelectorAll("p")].find((paragraph) =>
+      paragraph.textContent.startsWith(
+        "Example Game is a fictional design document",
+      ),
+    );
+    return {
+      body: textStyle("describe their purpose"),
+      title: textStyle("Example Game — System Bible"),
+      selectiveNormal: textStyle(" is a fictional systems overview"),
+      marginBottom: parseFloat(getComputedStyle(opening).marginBottom),
+      marginLeft: parseFloat(getComputedStyle(opening).marginLeft),
+    };
+  });
+  expect(styles.body.fontFamily).toContain("Arial");
+  expect(styles.body.fontSize).toBeCloseTo((11 * 4) / 3, 1);
+  expect(styles.body.fontWeight).toBe("400");
+  expect(styles.title.fontFamily).toContain("Arial");
+  expect(styles.title.fontSize).toBeCloseTo((22 * 4) / 3, 1);
+  expect(styles.title.fontWeight).toBe("700");
+  expect(styles.selectiveNormal.fontWeight).toBe("400");
+  expect(styles.marginBottom).toBeCloseTo((8 * 4) / 3, 1);
+  expect(styles.marginLeft).toBeCloseTo((22 * 4) / 3, 1);
+  const selective = editor.locator(":scope > p").filter({
+    hasText: /^Example Game is a fictional systems overview/,
+  });
+  const boldStyle = await selective.evaluate((paragraph) => {
+    const walker = document.createTreeWalker(paragraph, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) {
+      if (node.textContent?.includes("Example Game"))
+        return getComputedStyle(node.parentElement).fontWeight;
+    }
+    throw new Error("Selective bold text not found in native manuscript");
+  });
+  expect(boldStyle).toBe("700");
+}
+function assertSavedDocsFormatting(project) {
+  const chapter = project.nodes.find(
+    (node) => node.title === "Native Docs overview",
+  );
+  expect(chapter, "Native imported chapter exists").toBeDefined();
+  const opening = chapter.document.content.find(
+    (node) =>
+      node.type === "paragraph" &&
+      JSON.stringify(node).includes("describe their purpose"),
+  );
+  expect(opening.attrs).toMatchObject({
+    fontFamily: "Arial",
+    fontSize: "11pt",
+    lineHeight: "1.15",
+    marginBottom: "8pt",
+    marginLeft: "22pt",
+    marginRight: "6pt",
+    textIndent: "0pt",
+  });
+  const body = opening.content.find(
+    (node) =>
+      node.type === "text" && node.text.includes("describe their purpose"),
+  );
+  expect(body.marks.some((mark) => mark.type === "bold")).toBe(false);
+  expect(
+    body.marks.find((mark) => mark.type === "textStyle")?.attrs,
+  ).toMatchObject({
+    fontFamily: "Arial",
+    fontSize: "11pt",
+  });
+  const selective = chapter.document.content.find(
+    (node) =>
+      node.type === "paragraph" &&
+      JSON.stringify(node).includes("is a fictional systems overview"),
+  );
+  expect(
+    selective.content.find((node) => node.text === "Example Game").marks,
+  ).toContainEqual({ type: "bold" });
+}
 try {
   await launch();
   await expect(
@@ -290,6 +384,65 @@ try {
   assertBible(recoveredBible.project, recoveredBibleText);
   evidence.checks.push(
     "Nested system-bible edit recovered from a crash journal and saved with its complete hierarchy and metadata",
+  );
+  await page
+    .getByRole("button", { name: "Your bookshelf", exact: true })
+    .click();
+  await page.getByRole("button", { name: "New book", exact: true }).click();
+  await page.getByLabel("Book title").fill("Native Docs paste");
+  await page.getByRole("button", { name: "Create book", exact: true }).click();
+  await page
+    .getByLabel("Chapter title", { exact: true })
+    .fill("Native Docs overview");
+  const lightSwitch = page.getByRole("button", {
+    name: "Switch to light mode",
+    exact: true,
+  });
+  if (await lightSwitch.isVisible()) await lightSwitch.click();
+  const docsHTML = (
+    await readFile(
+      new URL("../tests/fixtures/google-docs.html", import.meta.url),
+      "utf8",
+    )
+  ).replace(/>\s+</g, "><");
+  await page.getByRole("textbox", { name: "Chapter manuscript" }).focus();
+  await page.evaluate((html) => {
+    const data = new DataTransfer();
+    data.setData("text/html", html);
+    document.querySelector(".tiptap").dispatchEvent(
+      new ClipboardEvent("paste", {
+        clipboardData: data,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+  }, docsHTML);
+  await assertNativeDocsFormatting();
+  await page
+    .getByRole("button", { name: "Saved on this device", exact: true })
+    .waitFor();
+  const savedDocs = await projectByTitle("Native Docs paste");
+  assertSavedDocsFormatting(savedDocs.project);
+  await page.screenshot({ path: path.join(root, "native-google-docs.png") });
+  evidence.checks.push(
+    "Native Google Docs paste preserved Arial fonts, point sizes, selective bold and paragraph spacing in the WebView2 editor and real book.json",
+  );
+  await kill();
+  await launch();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await page
+    .getByRole("button", { name: "Open Native Docs paste", exact: true })
+    .click();
+  await page
+    .locator(".book-tree .chapter-row")
+    .filter({ hasText: "Native Docs overview" })
+    .click();
+  await assertNativeDocsFormatting();
+  assertSavedDocsFormatting(
+    (await projectByTitle("Native Docs paste")).project,
+  );
+  evidence.checks.push(
+    "Imported Google Docs formatting and normal-weight body text survived a native process restart",
   );
   expect(evidence.errors).toEqual([]);
   evidence.checks.push("No JavaScript runtime errors during native workflow");

@@ -75,7 +75,7 @@ export default function Library({
             <Settings2 size={17} /> Preferences
           </button>
           <div className="rail-version">
-            CODEBOOK <span>0.2 · EARLY EDITION</span>
+            CODEBOOK <span>0.2.1 · EARLY EDITION</span>
           </div>
         </div>
       </aside>

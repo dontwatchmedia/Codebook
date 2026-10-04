@@ -303,7 +303,8 @@ export default function Manuscript({
                     .chain()
                     .focus()
                     .setHeading({
-                      level: Number(e.target.value.slice(1)) as 1 | 2 | 3,
+                      level: Number(e.target.value.slice(1)) as
+                        1 | 2 | 3 | 4 | 5 | 6,
                     })
                     .run()
             }
@@ -312,6 +313,9 @@ export default function Manuscript({
             <option value="h1">Heading 1</option>
             <option value="h2">Heading 2</option>
             <option value="h3">Heading 3</option>
+            <option value="h4">Heading 4</option>
+            <option value="h5">Heading 5</option>
+            <option value="h6">Heading 6</option>
           </select>
           <div className="tool-group">
             {tool(

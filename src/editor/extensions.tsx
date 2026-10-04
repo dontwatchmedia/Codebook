@@ -13,6 +13,7 @@ import Placeholder from "@tiptap/extension-placeholder";
 import { lowlight } from "./highlighting";
 import { Copy, Check, Hash, Code2 } from "lucide-react";
 import { useState } from "react";
+import { ImportedTextStyle, ImportedBlockStyle } from "./formatting";
 export const languages = [
   ["plaintext", "Plain text"],
   ["cpp", "C++"],
@@ -179,9 +180,11 @@ export function extensions() {
   return [
     StarterKit.configure({
       codeBlock: false,
-      heading: { levels: [1, 2, 3, 4] },
+      heading: { levels: [1, 2, 3, 4, 5, 6] },
       link: { openOnClick: false, protocols: ["https", "http", "mailto"] },
     }),
+    ImportedTextStyle,
+    ImportedBlockStyle,
     TechnicalCode,
     Image.configure({ allowBase64: true }),
     TableKit.configure({ table: { resizable: true } }),

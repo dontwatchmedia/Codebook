@@ -1,6 +1,7 @@
 import type { JSONContent } from "@tiptap/core";
 import { chapters, outlineEntries, type Book, type BookNode } from "./model";
 import { lowlight } from "./editor/highlighting";
+import { blockStyleCSS, textStyleCSS } from "./formatting";
 const escape = (s: string) =>
   s
     .replace(/&/g, "&amp;")
@@ -12,6 +13,8 @@ const safeURL = (s: string) =>
     ? s
     : "";
 const mdEscape = (s: string) => s.replace(/([\\`*_[\]<>])/g, "\\$1");
+const styleAttribute = (style: string) =>
+  style ? ` style="${escape(style)}"` : "";
 function highlightedCode(content: string, language: string): string {
   if (!language || !lowlight.registered(language)) return escape(content);
   const render = (node: {
@@ -63,7 +66,7 @@ export function toMarkdown(node: JSONContent, headingOffset = 0): string {
       );
       return level <= 6
         ? "#".repeat(level) + " " + children() + "\n\n"
-        : `<div role="heading" aria-level="${level}">${(node.content || []).map((n) => toHTML(n)).join("")}</div>\n\n`;
+        : `<div role="heading" aria-level="${level}">${(node.content || []).map((n) => toHTML(n, 0, false)).join("")}</div>\n\n`;
     }
     case "hardBreak":
       return "  \n";
@@ -85,7 +88,7 @@ export function toMarkdown(node: JSONContent, headingOffset = 0): string {
           .join("\n") + "\n\n"
       );
     case "callout":
-      return `<aside data-callout="${escape(node.attrs?.kind || "note")}">\n${(node.content || []).map((n) => toHTML(n, headingOffset)).join("")}\n</aside>\n\n`;
+      return `<aside data-callout="${escape(node.attrs?.kind || "note")}">\n${(node.content || []).map((n) => toHTML(n, headingOffset, false)).join("")}\n</aside>\n\n`;
     case "bulletList":
     case "orderedList":
       return (
@@ -144,9 +147,15 @@ export function toMarkdown(node: JSONContent, headingOffset = 0): string {
       return children();
   }
 }
-export function toHTML(node: JSONContent, headingOffset = 0): string {
+export function toHTML(
+  node: JSONContent,
+  headingOffset = 0,
+  preserveFormatting = true,
+): string {
   const c = () =>
-    (node.content || []).map((n) => toHTML(n, headingOffset)).join("");
+    (node.content || [])
+      .map((n) => toHTML(n, headingOffset, preserveFormatting))
+      .join("");
   if (node.type === "text") {
     let s = escape(node.text || "");
     for (const m of node.marks || []) {
@@ -162,6 +171,10 @@ export function toHTML(node: JSONContent, headingOffset = 0): string {
       if (tag) s = `<${tag}>${s}</${tag}>`;
       if (m.type === "link")
         s = `<a href="${escape(safeURL(m.attrs?.href || ""))}">${s}</a>`;
+      if (m.type === "textStyle" && preserveFormatting) {
+        const style = textStyleCSS(m.attrs || {});
+        if (style) s = `<span${styleAttribute(style)}>${s}</span>`;
+      }
     }
     return s;
   }
@@ -177,20 +190,27 @@ export function toHTML(node: JSONContent, headingOffset = 0): string {
   };
   if (tags[node.type!]) {
     const tag = tags[node.type!];
-    return `<${tag}>${c()}</${tag}>\n`;
+    const style =
+      !preserveFormatting || tag === "table" || tag === "tr"
+        ? ""
+        : blockStyleCSS(node.attrs || {});
+    return `<${tag}${styleAttribute(style)}>${c()}</${tag}>\n`;
   }
   switch (node.type) {
     case "heading": {
+      const style = preserveFormatting
+        ? styleAttribute(blockStyleCSS(node.attrs || {}))
+        : "";
       const level = Math.max(
         1,
         (Number(node.attrs?.level) || 2) + headingOffset,
       );
       return level <= 6
-        ? `<h${level}>${c()}</h${level}>\n`
-        : `<div role="heading" aria-level="${level}">${c()}</div>\n`;
+        ? `<h${level}${style}>${c()}</h${level}>\n`
+        : `<div role="heading" aria-level="${level}"${style}>${c()}</div>\n`;
     }
     case "orderedList":
-      return `<ol start="${Number(node.attrs?.start) || 1}">${c()}</ol>\n`;
+      return `<ol start="${Number(node.attrs?.start) || 1}"${preserveFormatting ? styleAttribute(blockStyleCSS(node.attrs || {})) : ""}>${c()}</ol>\n`;
     case "hardBreak":
       return "<br>";
     case "horizontalRule":
@@ -200,7 +220,7 @@ export function toHTML(node: JSONContent, headingOffset = 0): string {
     case "image":
       return `<img src="${escape(safeURL(node.attrs?.src || ""))}" alt="${escape(node.attrs?.alt || "")}">\n`;
     case "callout":
-      return `<aside data-callout="${escape(node.attrs?.kind || "note")}">${c()}</aside>\n`;
+      return `<aside data-callout="${escape(node.attrs?.kind || "note")}"${preserveFormatting ? styleAttribute(blockStyleCSS(node.attrs || {})) : ""}>${c()}</aside>\n`;
     default:
       return c();
   }

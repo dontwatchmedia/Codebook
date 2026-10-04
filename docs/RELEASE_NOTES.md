@@ -1,16 +1,27 @@
-# CodeBook 0.2.0 — Nested system bibles and section progress
+# CodeBook 0.2.1 — Google Docs formatting fix
 
-CodeBook now supports game design documents and system bibles alongside technical books. Keep an overview, systems, sub-systems, and features in a growing outline, with writing at every level and visible icons and progress states.
+CodeBook fixes Google Docs pastes that made normal paragraphs bold and replaced their source typography. Imported formatting now remains part of the saved document.
 
 ## Download
 
 - **[CodeBook.exe](https://github.com/dontwatchmedia/Codebook/releases/latest/download/CodeBook.exe)** — the current portable Windows executable.
-- **CodeBook-0.2.0-Windows.zip** — the same executable with a quick-start guide, README, validation notes, MIT license, and SHA-256 checksum, available in the **[latest release](https://github.com/dontwatchmedia/Codebook/releases/latest)**.
+- **CodeBook-0.2.1-Windows.zip** — the same executable with a quick-start guide, README, validation notes, MIT license, and SHA-256 checksum, available in the **[latest release](https://github.com/dontwatchmedia/Codebook/releases/latest)**.
 - **CodeBook.exe.sha256** — checksum for the executable.
 
 Download the EXE directly, or extract the ZIP and double-click CodeBook.exe. No Node.js, Rust, login, or development server is needed to use it. Requires 64-bit Windows 10/11 and Microsoft Edge WebView2. The executable is unsigned.
 
-## New in 0.2.0
+## Fixed in 0.2.1
+
+- Normal-weight Google Docs wrappers no longer make the entire pasted document bold.
+- Supported fonts, sizes, colors, highlights, alignment, paragraph indents, line spacing, paragraph spacing, and list typography remain editable and survive saving, reopening, and native clipboard copying.
+- HTML and portable `.codebook` projects retain imported typography; Markdown keeps its semantic text formatting.
+- Imported default dark ink adapts to dark-mode paper while its source color remains in project data and exports.
+- Heading levels 1–6 are supported.
+- Imported CSS is restricted to validated formatting values; arbitrary page layout, scripts, and external CSS resources are discarded.
+
+After upgrading, re-copy and paste selections that were formatted incorrectly by an earlier version. Their discarded source formatting cannot be recovered automatically.
+
+## Included from 0.2.0
 
 - Create a **System bible**, or change an existing project's type in its settings. Existing books retain their content and organization.
 - Add child sections below an overview, system, or feature, with further nesting as the design develops.

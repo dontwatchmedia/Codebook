@@ -10,15 +10,18 @@ import {
   ArrowRight,
   HardDrive,
   Settings2,
+  Layers,
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { bookWords, chapters, type Book } from "../model";
 import { desktop } from "../storage";
 import ThemeToggle from "./ThemeToggle";
+import "./outline.css";
 interface Props {
   books: Book[];
   open: (b: Book) => void;
   create: () => void;
+  createBible?: () => void;
   settings: () => void;
   theme: string;
   toggleTheme: () => void;
@@ -29,6 +32,7 @@ export default function Library({
   books,
   open,
   create,
+  createBible,
   settings,
   theme,
   toggleTheme,
@@ -53,7 +57,7 @@ export default function Library({
         </div>
         <div className="rail-caption">YOUR WRITING SPACE</div>
         <button className="rail-item selected">
-          <BookOpen size={18} /> All books <span>{books.length}</span>
+          <BookOpen size={18} /> All projects <span>{books.length}</span>
         </button>
         <button className="rail-item" onClick={() => input.current?.click()}>
           <FolderOpen size={18} /> Open a project
@@ -71,7 +75,7 @@ export default function Library({
             <Settings2 size={17} /> Preferences
           </button>
           <div className="rail-version">
-            CODEBOOK <span>0.1 · EARLY EDITION</span>
+            CODEBOOK <span>0.2 · EARLY EDITION</span>
           </div>
         </div>
       </aside>
@@ -90,20 +94,29 @@ export default function Library({
         </header>
         <div className="library-heading">
           <div>
-            <div className="eyebrow">A PLACE FOR YOUR NEXT CHAPTER</div>
+            <div className="eyebrow">BOOKS, SYSTEM BIBLES, AND BIG IDEAS</div>
             <h1>
               Your bookshelf<span>.</span>
             </h1>
-            <p>Big ideas start with a few good words.</p>
+            <p>
+              A home for your chapters, systems, and everything they become.
+            </p>
           </div>
-          <button className="primary" onClick={create}>
-            <Plus size={18} /> New book
-          </button>
+          <div className="library-create-actions">
+            {createBible && (
+              <button className="secondary" onClick={createBible}>
+                <Layers size={17} /> New system bible
+              </button>
+            )}
+            <button className="primary" onClick={create}>
+              <Plus size={18} /> New book
+            </button>
+          </div>
         </div>
         <div className="shelf-toolbar">
           <div>
             <span className="shelf-tab">
-              All books <b>{books.length}</b>
+              All projects <b>{books.length}</b>
             </span>
             <span className="muted">Made by you. Kept with you.</span>
           </div>
@@ -111,7 +124,7 @@ export default function Library({
             <Search size={16} />
             <input
               aria-label="Find a book"
-              placeholder="Find a book…"
+              placeholder="Find a book or system bible…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -130,8 +143,14 @@ export default function Library({
                 aria-label={`Open ${b.title}`}
               >
                 <div className="cover-top">
-                  <span>THE MANUSCRIPT</span>
-                  <BookOpen size={18} />
+                  <span className="project-kind">
+                    {b.mode === "bible" ? "THE SYSTEM BIBLE" : "THE MANUSCRIPT"}
+                  </span>
+                  {b.mode === "bible" ? (
+                    <Layers size={18} />
+                  ) : (
+                    <BookOpen size={18} />
+                  )}
                 </div>
                 <h2>{b.title}</h2>
                 <p>{b.subtitle || "A work in progress."}</p>
@@ -158,7 +177,8 @@ export default function Library({
                 </button>
               </div>
               <div className="book-card-meta">
-                {chapters(b).length} chapters <span>·</span>{" "}
+                {chapters(b).length}{" "}
+                {b.mode === "bible" ? "sections" : "chapters"} <span>·</span>{" "}
                 {bookWords(b).toLocaleString()} words
               </div>
               <div className="book-card-updated">
@@ -168,9 +188,11 @@ export default function Library({
                   day: "numeric",
                 })}
                 <span className="small-pill">
-                  {chapters(b).every((c) => c.status === "Final")
-                    ? "Complete"
-                    : "In progress"}
+                  {b.mode === "bible"
+                    ? `${chapters(b).filter((chapter) => chapter.progress === "complete").length} complete`
+                    : chapters(b).every((c) => c.status === "Final")
+                      ? "Complete"
+                      : "In progress"}
                 </span>
               </div>
             </article>
@@ -181,7 +203,7 @@ export default function Library({
                 <Plus size={25} />
               </span>
               <h3>A new beginning</h3>
-              <p>There’s a book only you can write.</p>
+              <p>Your next book or system bible starts here.</p>
               <span className="new-book-link">
                 Create a book <ArrowRight size={15} />
               </span>
@@ -190,7 +212,7 @@ export default function Library({
           {search && !filtered.length && (
             <div className="empty-state">
               <Search />
-              <h3>No books found</h3>
+              <h3>No projects found</h3>
               <p>Try another title or author.</p>
             </div>
           )}
@@ -200,13 +222,13 @@ export default function Library({
             <Terminal size={22} />
           </span>
           <div>
-            <h3>For the words. And the code.</h3>
+            <h3>Give every idea room to grow.</h3>
             <p>
               Paste a formatted response, add a code example, or just start
               writing.
               <br />
-              CodeBook gives every part of your technical book a place to
-              belong.
+              Build a book in chapters or a system bible with layers of systems
+              and features.
             </p>
           </div>
           <Leaf size={37} strokeWidth={1} />
@@ -216,7 +238,7 @@ export default function Library({
             <HardDrive size={14} />{" "}
             {desktop ? "Saved on this device" : "Preview uses browser storage"}
           </span>
-          <span>Good books take time. Make yourself at home.</span>
+          <span>Good ideas take time. Make yourself at home.</span>
         </footer>
       </main>
       <input

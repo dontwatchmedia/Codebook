@@ -1,6 +1,19 @@
 import type { JSONContent } from "@tiptap/core";
 export type Status =
   "Idea" | "Outline" | "Draft" | "Revision" | "Editing" | "Final";
+export type Progress =
+  "not-started" | "in-progress" | "complete" | "blocked" | "on-hold";
+export type SectionIconName =
+  | "document"
+  | "layers"
+  | "gamepad"
+  | "globe"
+  | "users"
+  | "leaf"
+  | "hammer"
+  | "code"
+  | "lightbulb"
+  | "flag";
 export interface Chapter {
   id: string;
   type: "chapter";
@@ -8,6 +21,8 @@ export interface Chapter {
   parentId: string | null;
   kind: "chapter" | "front" | "back";
   status: Status;
+  progress?: Progress;
+  icon?: SectionIconName;
   tags: string;
   notes: string;
   goal: number;
@@ -23,6 +38,7 @@ export interface Part {
 export type BookNode = Chapter | Part;
 export interface Book {
   version: 1;
+  mode?: "book" | "bible";
   id: string;
   title: string;
   subtitle: string;
@@ -85,6 +101,8 @@ export function makeChapter(
     parentId,
     kind: "chapter",
     status: "Draft",
+    progress: "not-started",
+    icon: "document",
     tags: "",
     notes: "",
     goal: 2000,
@@ -101,6 +119,7 @@ export function makeBook(title: string, template = "blank"): Book {
   );
   return {
     version: 1,
+    ...(template === "bible" ? { mode: "bible" as const } : {}),
     id: uid(),
     title,
     subtitle: "",
@@ -109,17 +128,19 @@ export function makeBook(title: string, template = "blank"): Book {
     language: "en-US",
     created: now(),
     modified: now(),
-    goal: 50000,
+    goal: template === "bible" ? 0 : 50000,
     color: "#314d43",
     nodes:
-      template === "blank"
-        ? [first]
-        : [
-            { ...makeChapter("Preface"), kind: "front" },
-            part,
-            first,
-            { ...makeChapter("Appendix"), kind: "back" },
-          ],
+      template === "bible"
+        ? [{ ...makeChapter("Overview"), progress: "in-progress", goal: 0 }]
+        : template === "blank"
+          ? [first]
+          : [
+              { ...makeChapter("Preface"), kind: "front" },
+              part,
+              first,
+              { ...makeChapter("Appendix"), kind: "back" },
+            ],
   };
 }
 const allowedNodes = new Set([
@@ -237,6 +258,7 @@ export function validateBook(value: unknown): value is Book {
     typeof b.id !== "string" ||
     !/^[a-zA-Z0-9-]+$/.test(b.id) ||
     typeof b.title !== "string" ||
+    (b.mode !== undefined && b.mode !== "book" && b.mode !== "bible") ||
     !Array.isArray(b.nodes) ||
     !b.nodes.length
   )
@@ -281,80 +303,237 @@ export function validateBook(value: unknown): value is Book {
         !["chapter", "front", "back"].includes(n.kind))
     )
       return false;
-  }
-  return (
-    chapters(b).length > 0 &&
-    chapters(b).every(
-      (c) =>
-        !c.parentId ||
-        b.nodes.some((n) => n.type === "part" && n.id === c.parentId),
+    if (
+      n.type === "chapter" &&
+      ((n.parentId !== null && typeof n.parentId !== "string") ||
+        (n.progress !== undefined &&
+          ![
+            "not-started",
+            "in-progress",
+            "complete",
+            "blocked",
+            "on-hold",
+          ].includes(n.progress)) ||
+        (n.icon !== undefined &&
+          ![
+            "document",
+            "layers",
+            "gamepad",
+            "globe",
+            "users",
+            "leaf",
+            "hammer",
+            "code",
+            "lightbulb",
+            "flag",
+          ].includes(n.icon)))
     )
-  );
+      return false;
+  }
+  if (!chapters(b).length) return false;
+  const nodes = new Map(b.nodes.map((n) => [n.id, n]));
+  if (chapters(b).some((c) => c.parentId !== null && !nodes.has(c.parentId)))
+    return false;
+  // Follow each parent chain once, so deeply nested outlines remain safe and
+  // large projects do not require a recursive call for each level.
+  const completed = new Set<string>();
+  for (const start of b.nodes) {
+    const path = new Set<string>();
+    let node: BookNode | undefined = start;
+    while (node && !completed.has(node.id)) {
+      if (path.has(node.id)) return false;
+      path.add(node.id);
+      node =
+        node.type === "chapter" && node.parentId !== null
+          ? nodes.get(node.parentId)
+          : undefined;
+    }
+    for (const id of path) completed.add(id);
+  }
+  return true;
 }
-export function moveNode(book: Book, movingId: string, targetId: string): Book {
-  if (movingId === targetId) return book;
-  const moving = book.nodes.find((n) => n.id === movingId),
-    target = book.nodes.find((n) => n.id === targetId);
+
+const parentOf = (node: BookNode): string | null =>
+  node.type === "chapter" ? node.parentId : null;
+
+function childrenByParent(book: Book): Map<string | null, BookNode[]> {
+  const children = new Map<string | null, BookNode[]>();
+  for (const node of book.nodes) {
+    const parent = parentOf(node);
+    const siblings = children.get(parent) ?? [];
+    siblings.push(node);
+    children.set(parent, siblings);
+  }
+  return children;
+}
+
+export interface OutlineEntry {
+  node: BookNode;
+  depth: number;
+}
+
+/** The array determines sibling order; parentId determines the outline. */
+export function outlineEntries(book: Book): OutlineEntry[] {
+  const children = childrenByParent(book);
+  const pending = (children.get(null) ?? [])
+    .map((node) => ({ node, depth: 0 }))
+    .reverse();
+  const entries: OutlineEntry[] = [];
+  const seen = new Set<string>();
+  while (pending.length) {
+    const entry = pending.pop()!;
+    if (seen.has(entry.node.id)) continue;
+    seen.add(entry.node.id);
+    entries.push(entry);
+    const nested = children.get(entry.node.id) ?? [];
+    for (let i = nested.length - 1; i >= 0; i--)
+      pending.push({ node: nested[i], depth: entry.depth + 1 });
+  }
+  return entries;
+}
+
+/** All descendants in outline order, excluding the section itself. */
+export function descendants(book: Book, id: string): BookNode[] {
+  const children = childrenByParent(book);
+  const pending = [...(children.get(id) ?? [])].reverse();
+  const result: BookNode[] = [];
+  const seen = new Set([id]);
+  while (pending.length) {
+    const node = pending.pop()!;
+    if (seen.has(node.id)) continue;
+    seen.add(node.id);
+    result.push(node);
+    const nested = children.get(node.id) ?? [];
+    for (let i = nested.length - 1; i >= 0; i--) pending.push(nested[i]);
+  }
+  return result;
+}
+
+/** The enclosing sections from root to immediate parent. */
+export function ancestors(book: Book, id: string): BookNode[] {
+  const nodes = new Map(book.nodes.map((node) => [node.id, node]));
+  let parent = nodes.get(id);
+  const result: BookNode[] = [];
+  const seen = new Set([id]);
+  while (parent && parentOf(parent) !== null) {
+    parent = nodes.get(parentOf(parent)!);
+    if (!parent || seen.has(parent.id)) break;
+    seen.add(parent.id);
+    result.push(parent);
+  }
+  return result.reverse();
+}
+
+const orderedNodes = (book: Book) =>
+  outlineEntries(book).map(({ node }) => node);
+
+function subtree(book: Book, node: BookNode): BookNode[] {
+  return [node, ...descendants(book, node.id)];
+}
+
+function afterSubtree(nodes: BookNode[], book: Book, id: string): number {
+  const nested = descendants(book, id);
+  const last = nested[nested.length - 1]?.id ?? id;
+  return nodes.findIndex((node) => node.id === last) + 1;
+}
+
+export function insertChapter(book: Book, chapter: Chapter): Book {
   if (
-    !moving ||
-    !target ||
-    (moving.type === "part" &&
-      target.type === "chapter" &&
-      target.parentId === moving.id)
+    book.nodes.some((node) => node.id === chapter.id) ||
+    (chapter.parentId !== null &&
+      !book.nodes.some((node) => node.id === chapter.parentId))
   )
     return book;
-  const group =
-    moving.type === "part"
-      ? book.nodes.filter(
-          (n) =>
-            n.id === movingId ||
-            (n.type === "chapter" && n.parentId === movingId),
-        )
-      : [moving];
-  const rest = book.nodes.filter((n) => !group.includes(n));
-  let index = rest.findIndex((n) => n.id === targetId);
+  const nodes = orderedNodes(book);
+  const index =
+    chapter.parentId === null
+      ? nodes.length
+      : afterSubtree(nodes, book, chapter.parentId);
+  nodes.splice(index, 0, chapter);
+  return { ...book, nodes, modified: now() };
+}
+
+/** Move the entire section to the end of its new parent's children. */
+export function reparentNode(
+  book: Book,
+  id: string,
+  parentId: string | null,
+): Book {
+  const moving = book.nodes.find((node) => node.id === id);
+  if (!moving || moving.type !== "chapter" || moving.parentId === parentId)
+    return book;
+  if (parentId !== null && !book.nodes.some((node) => node.id === parentId))
+    return book;
+  const group = subtree(book, moving);
+  const ids = new Set(group.map((node) => node.id));
+  if (parentId !== null && ids.has(parentId)) return book;
+  const rest = orderedNodes(book).filter((node) => !ids.has(node.id));
+  group[0] = { ...moving, parentId };
+  const index =
+    parentId === null
+      ? rest.length
+      : afterSubtree(rest, { ...book, nodes: rest }, parentId);
+  rest.splice(index, 0, ...group);
+  return { ...book, nodes: rest, modified: now() };
+}
+
+/** Remove only this section; all documents below it are retained. */
+export function removeNodePreserveChildren(book: Book, id: string): Book {
+  const removed = book.nodes.find((node) => node.id === id);
+  if (!removed) return book;
+  const parentId = parentOf(removed);
+  const nodes = orderedNodes(book)
+    .filter((node) => node.id !== id)
+    .map((node) =>
+      node.type === "chapter" && node.parentId === id
+        ? { ...node, parentId }
+        : node,
+    );
+  return { ...book, nodes, modified: now() };
+}
+
+export function moveNode(book: Book, movingId: string, targetId: string): Book {
+  if (movingId === targetId) return book;
+  const moving = book.nodes.find((node) => node.id === movingId);
+  const target = book.nodes.find((node) => node.id === targetId);
+  if (!moving || !target) return book;
+  const group = subtree(book, moving);
+  const ids = new Set(group.map((node) => node.id));
+  if (ids.has(targetId)) return book;
+  const rest = orderedNodes(book).filter((node) => !ids.has(node.id));
+  let beforeId = target.id;
+  let index = rest.findIndex((node) => node.id === beforeId);
   if (moving.type === "chapter") {
     group[0] = {
       ...moving,
       parentId: target.type === "part" ? target.id : target.parentId,
     };
+    // Dropping onto a part retains the existing first-child behavior.
     if (target.type === "part") index++;
-  } else if (target.type === "chapter" && target.parentId)
-    index = rest.findIndex((n) => n.id === target.parentId);
+  } else if (parentOf(target) !== null) {
+    beforeId = ancestors(book, target.id)[0].id;
+    index = rest.findIndex((node) => node.id === beforeId);
+  }
   rest.splice(index, 0, ...group);
   return { ...book, nodes: rest, modified: now() };
 }
+
 export function moveRelative(book: Book, id: string, direction: -1 | 1): Book {
-  const node = book.nodes.find((n) => n.id === id);
+  const node = book.nodes.find((item) => item.id === id);
   if (!node) return book;
-  const siblings = book.nodes.filter((n) =>
-    node.type === "part"
-      ? n.type === "part" || (n.type === "chapter" && !n.parentId)
-      : n.type === "chapter" && n.parentId === node.parentId,
+  const siblings = book.nodes.filter(
+    (item) => parentOf(item) === parentOf(node),
   );
-  const neighbor = siblings[siblings.findIndex((n) => n.id === id) + direction];
+  const neighbor =
+    siblings[siblings.findIndex((item) => item.id === id) + direction];
   if (!neighbor) return book;
-  const group = (n: BookNode) =>
-    book.nodes.filter(
-      (x) =>
-        x.id === n.id ||
-        (n.type === "part" && x.type === "chapter" && x.parentId === n.id),
-    );
-  const a = group(node),
-    b = group(neighbor),
-    nodes = [...book.nodes];
-  const start = Math.min(nodes.indexOf(a[0]), nodes.indexOf(b[0]));
-  const between = nodes
-    .slice(
-      start,
-      Math.max(nodes.indexOf(a[a.length - 1]), nodes.indexOf(b[b.length - 1])) +
-        1,
-    )
-    .filter((n) => !a.includes(n) && !b.includes(n));
-  nodes.splice(
-    start,
-    a.length + b.length + between.length,
-    ...(direction === -1 ? [...a, ...between, ...b] : [...b, ...between, ...a]),
-  );
-  return { ...book, nodes, modified: now() };
+  const group = subtree(book, node);
+  const ids = new Set(group.map((item) => item.id));
+  const rest = orderedNodes(book).filter((item) => !ids.has(item.id));
+  const index =
+    direction === -1
+      ? rest.findIndex((item) => item.id === neighbor.id)
+      : afterSubtree(rest, { ...book, nodes: rest }, neighbor.id);
+  rest.splice(index, 0, ...group);
+  return { ...book, nodes: rest, modified: now() };
 }

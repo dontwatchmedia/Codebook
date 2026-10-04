@@ -37,6 +37,13 @@ import {
 } from "lucide-react";
 import Library from "./components/Library";
 import ThemeToggle from "./components/ThemeToggle";
+import OutlineTree from "./components/OutlineTree";
+import {
+  SectionIcon,
+  ProgressIcon,
+  iconOptions,
+  progressOptions,
+} from "./components/SectionSymbols";
 import { readTheme, saveTheme } from "./theme";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import Modal from "./components/Modal";
@@ -49,6 +56,12 @@ import {
   emptyDoc,
   makeBook,
   makeChapter,
+  ancestors,
+  descendants,
+  outlineEntries,
+  reparentNode,
+  insertChapter,
+  removeNodePreserveChildren,
   moveNode,
   moveRelative,
   now,
@@ -59,6 +72,8 @@ import {
   type BookNode,
   type Chapter,
   type Status,
+  type Progress,
+  type SectionIconName,
 } from "./model";
 import {
   clearRecovery,
@@ -125,6 +140,8 @@ export default function App() {
       message: string;
       action: () => void;
     } | null>(null);
+  const [newParentId, setNewParentId] = useState<string | null>(null);
+  const [newTemplate, setNewTemplate] = useState("technical");
   const [inspector, setInspector] = useState(true),
     [focus, setFocus] = useState(false),
     [preview, setPreview] = useState(false),
@@ -157,6 +174,18 @@ export default function App() {
       book &&
       (chapters(book).find((c) => c.id === chapterId) || chapters(book)[0]);
   const editedBook = books.find((b) => b.id === editBookId) || book;
+  const bible = book?.mode === "bible";
+  const sectionName = bible ? "section" : "chapter";
+  function revealSection(id: string, project = book) {
+    setChapterId(id);
+    if (project)
+      setCollapsed((prev) => {
+        const next = new Set(prev);
+        ancestors(project, id).forEach((n) => next.delete(n.id));
+        return next;
+      });
+    setFindOpen(false);
+  }
   const notify = (message: string) => {
     setToast(message);
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -297,13 +326,17 @@ export default function App() {
   }, [book]);
   function openBook(b: Book) {
     setActiveId(b.id);
+    setCollapsed(new Set());
     setChapterId(
       chapters(b).find((c) => c.kind === "chapter")?.id || chapters(b)[0].id,
     );
     setPreview(false);
   }
-  function newNode(type: "chapter" | "part") {
+  function newNode(type: "chapter" | "part", parentId?: string | null) {
     setNodeEdit(null);
+    setNewParentId(
+      parentId === undefined ? chapter?.parentId || null : parentId,
+    );
     setDialog(type);
   }
   async function importFile(file: File) {
@@ -332,9 +365,11 @@ export default function App() {
             : `<p>${raw.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/\n/g, "</p><p>")}</p>`;
         const c = makeChapter(file.name.replace(/\.[^.]+$/, ""));
         c.document = generateJSON(html, extensions());
-        updateBook({ ...book, nodes: [...book.nodes, c] });
-        setChapterId(c.id);
-        notify("Imported as a new chapter.");
+        if (bible) c.parentId = chapter?.id || null;
+        const imported = insertChapter(book, c);
+        updateBook(imported);
+        revealSection(c.id, imported);
+        notify(`Imported as a new ${sectionName}.`);
       }
     } catch (e) {
       notify(`Import failed: ${String(e)}`);
@@ -343,26 +378,19 @@ export default function App() {
   function removeNode(node: BookNode) {
     if (!book) return;
     if (node.type === "chapter" && chapters(book).length === 1) {
-      notify("Keep at least one chapter in a book.");
+      notify(`Keep at least one ${sectionName} in a project.`);
       return;
     }
     setConfirm({
-      title: `Delete ${node.type}?`,
+      title: `Delete ${node.type === "part" ? "part" : sectionName}?`,
       message:
         node.type === "part"
           ? "Its chapters will stay in the book, outside the part."
-          : `“${node.title}” will be removed. Download a project copy first if you want an independent backup.`,
+          : `“${node.title}” will be removed. Its child sections and their writing will stay, one level higher. Download a project copy first if you want an independent backup.`,
       action: () => {
-        updateBook({
-          ...book,
-          nodes: book.nodes
-            .filter((n) => n.id !== node.id)
-            .map((n) =>
-              n.type === "chapter" && n.parentId === node.id
-                ? { ...n, parentId: null }
-                : n,
-            ),
-        });
+        const next = removeNodePreserveChildren(book, node.id);
+        updateBook(next);
+        if (chapterId === node.id) setChapterId(chapters(next)[0].id);
         setConfirm(null);
         setDialog(null);
       },
@@ -449,7 +477,14 @@ export default function App() {
           <Library
             books={books}
             open={openBook}
-            create={() => setDialog("new")}
+            create={() => {
+              setNewTemplate("technical");
+              setDialog("new");
+            }}
+            createBible={() => {
+              setNewTemplate("bible");
+              setDialog("new");
+            }}
             settings={() => setDialog("preferences")}
             theme={theme}
             toggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")}
@@ -524,7 +559,7 @@ export default function App() {
                 </button>
               </div>
             </header>
-            <div className="workspace">
+            <div className={`workspace ${bible ? "bible-workspace" : ""}`}>
               <aside className="structure">
                 <button
                   className="back-library"
@@ -536,12 +571,14 @@ export default function App() {
                   <ArrowLeft size={14} /> Your bookshelf
                 </button>
                 <div className="structure-book">
-                  <div className="eyebrow">THE BOOK</div>
+                  <div className="eyebrow">
+                    {bible ? "SYSTEM BIBLE" : "THE BOOK"}
+                  </div>
                   <h2>{book.title}</h2>
                   <p>{book.subtitle || "A work in progress"}</p>
                 </div>
                 <div className="structure-label">
-                  <span>MANUSCRIPT</span>
+                  <span>{bible ? "SYSTEMS & SECTIONS" : "MANUSCRIPT"}</span>
                   <button
                     aria-label="Book settings"
                     onClick={() => {
@@ -552,141 +589,108 @@ export default function App() {
                     <MoreHorizontal size={18} />
                   </button>
                 </div>
-                <nav className="book-tree" aria-label="Book structure">
-                  {book.nodes.map((n) => {
+                <OutlineTree
+                  book={book}
+                  activeId={chapter?.id || ""}
+                  collapsed={collapsed}
+                  onToggle={(id) =>
+                    setCollapsed((prev) => {
+                      const next = new Set(prev);
+                      next.has(id) ? next.delete(id) : next.add(id);
+                      return next;
+                    })
+                  }
+                  onSelect={revealSection}
+                  onEdit={(node) => {
+                    setNodeEdit(node);
+                    setDialog(node.type);
+                  }}
+                  onMove={(movingId, targetId) => {
+                    const moved = moveNode(book, movingId, targetId);
+                    if (moved === book) return;
+                    updateBook(moved);
                     if (
-                      n.type === "chapter" &&
-                      n.parentId &&
-                      collapsed.has(n.parentId)
+                      chapter &&
+                      (movingId === chapter.id ||
+                        descendants(book, movingId).some(
+                          (n) => n.id === chapter.id,
+                        ))
                     )
-                      return null;
-                    if (n.type === "part")
-                      return (
-                        <div
-                          key={n.id}
-                          className="part-row"
-                          draggable
-                          onDragStart={(e) =>
-                            e.dataTransfer.setData("text/codebook-node", n.id)
-                          }
-                          onDragOver={(e) => e.preventDefault()}
-                          onDrop={(e) => {
-                            e.preventDefault();
-                            updateBook(
-                              moveNode(
-                                book,
-                                e.dataTransfer.getData("text/codebook-node"),
-                                n.id,
-                              ),
-                            );
-                          }}
-                        >
-                          <button
-                            className="part-name"
-                            onClick={() =>
-                              setCollapsed((prev) => {
-                                const next = new Set(prev);
-                                next.has(n.id)
-                                  ? next.delete(n.id)
-                                  : next.add(n.id);
-                                return next;
-                              })
-                            }
-                          >
-                            {collapsed.has(n.id) ? (
-                              <ChevronRight size={13} />
-                            ) : (
-                              <ChevronDown size={13} />
-                            )}
-                            <span>{n.title}</span>
-                          </button>
-                          <button
-                            className="row-edit"
-                            aria-label={`Edit part ${n.title}`}
-                            onClick={() => {
-                              setNodeEdit(n);
-                              setDialog("part");
-                            }}
-                          >
-                            <Pencil size={12} />
-                          </button>
-                        </div>
-                      );
-                    const number =
-                      chapters(book)
-                        .filter((c) => c.kind === "chapter")
-                        .findIndex((c) => c.id === n.id) + 1;
-                    return (
-                      <button
-                        key={n.id}
-                        className={`chapter-row ${n.id === chapter?.id ? "current" : ""} ${n.parentId ? "nested" : ""}`}
-                        draggable
-                        onDragStart={(e) =>
-                          e.dataTransfer.setData("text/codebook-node", n.id)
-                        }
-                        onDragOver={(e) => e.preventDefault()}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          updateBook(
-                            moveNode(
-                              book,
-                              e.dataTransfer.getData("text/codebook-node"),
-                              n.id,
-                            ),
-                          );
-                        }}
-                        onClick={() => {
-                          setChapterId(n.id);
-                          setFindOpen(false);
-                        }}
-                      >
-                        <span className="chapter-number">
-                          {n.kind === "chapter" ? (
-                            String(number).padStart(2, "0")
-                          ) : (
-                            <FileText size={14} />
-                          )}
-                        </span>
-                        <span>{n.title}</span>
-                        <span
-                          className={`chapter-status-dot status-${n.status?.toLowerCase()}`}
-                          title={n.status}
-                        />
-                      </button>
-                    );
-                  })}
-                </nav>
+                      revealSection(chapter.id, moved);
+                  }}
+                  onAddChild={(parentId) => newNode("chapter", parentId)}
+                />
                 <div className="structure-add">
-                  <button onClick={() => newNode("chapter")}>
-                    <Plus size={16} /> Add chapter
+                  <button
+                    onClick={() => newNode("chapter", bible ? null : undefined)}
+                  >
+                    <Plus size={16} /> Add {sectionName}
                   </button>
-                  <button onClick={() => newNode("part")}>
-                    <FolderPlus size={16} /> Add part
-                  </button>
+                  {bible ? (
+                    <button
+                      onClick={() => newNode("chapter", chapter?.id || null)}
+                    >
+                      <FolderPlus size={16} /> Add child section
+                    </button>
+                  ) : (
+                    <button onClick={() => newNode("part")}>
+                      <FolderPlus size={16} /> Add part
+                    </button>
+                  )}
                   <button onClick={() => importRef.current?.click()}>
-                    <Upload size={15} /> Import chapter
+                    <Upload size={15} /> Import {sectionName}
                   </button>
                 </div>
                 <div className="book-progress">
                   <div>
-                    <span>YOUR BOOK, TAKING SHAPE</span>
+                    <span>
+                      {bible ? "SYSTEM PROGRESS" : "YOUR BOOK, TAKING SHAPE"}
+                    </span>
                     <LeafIcon />
                   </div>
-                  <p>
-                    <strong>{bookWords(book).toLocaleString()}</strong>
-                    <span>
-                      {" "}
-                      / {(book.goal || 50000).toLocaleString()} words
-                    </span>
-                  </p>
-                  <div className="progress-track">
-                    <span
-                      style={{
-                        width: `${Math.min(100, (bookWords(book) / (book.goal || 50000)) * 100)}%`,
-                      }}
-                    />
-                  </div>
-                  <small>One word closer.</small>
+                  {bible ? (
+                    <>
+                      <p>
+                        <strong>
+                          {
+                            chapters(book).filter(
+                              (c) => c.progress === "complete",
+                            ).length
+                          }
+                        </strong>
+                        <span>
+                          {" "}
+                          / {chapters(book).length} sections complete
+                        </span>
+                      </p>
+                      <div className="progress-track">
+                        <span
+                          style={{
+                            width: `${(chapters(book).filter((c) => c.progress === "complete").length / chapters(book).length) * 100}%`,
+                          }}
+                        />
+                      </div>
+                      <small>Progress is set for each section.</small>
+                    </>
+                  ) : (
+                    <>
+                      <p>
+                        <strong>{bookWords(book).toLocaleString()}</strong>
+                        <span>
+                          {" "}
+                          / {(book.goal || 50000).toLocaleString()} words
+                        </span>
+                      </p>
+                      <div className="progress-track">
+                        <span
+                          style={{
+                            width: `${Math.min(100, (bookWords(book) / (book.goal || 50000)) * 100)}%`,
+                          }}
+                        />
+                      </div>
+                      <small>One word closer.</small>
+                    </>
+                  )}
                 </div>
                 <button
                   className="structure-help"
@@ -697,14 +701,42 @@ export default function App() {
               </aside>
               <main className="editor-column">
                 <div className="editor-top">
-                  <div className="breadcrumb">
-                    <span>
-                      {chapter?.parentId
-                        ? book.nodes.find((n) => n.id === chapter.parentId)
-                            ?.title
-                        : "Manuscript"}
-                    </span>
-                    <ChevronRight size={12} />
+                  <div
+                    className="breadcrumb"
+                    title={
+                      chapter
+                        ? [
+                            ...ancestors(book, chapter.id).map((n) => n.title),
+                            chapter.title,
+                          ].join(" / ")
+                        : ""
+                    }
+                  >
+                    {chapter &&
+                      ancestors(book, chapter.id).map((n) => (
+                        <span className="breadcrumb-parent" key={n.id}>
+                          <button
+                            onClick={() =>
+                              n.type === "chapter"
+                                ? revealSection(n.id)
+                                : setCollapsed((prev) => {
+                                    const next = new Set(prev);
+                                    next.delete(n.id);
+                                    return next;
+                                  })
+                            }
+                          >
+                            {n.title}
+                          </button>
+                          <ChevronRight size={12} />
+                        </span>
+                      ))}
+                    {!chapter?.parentId && (
+                      <>
+                        <span>{bible ? "System bible" : "Manuscript"}</span>
+                        <ChevronRight size={12} />
+                      </>
+                    )}
                     <strong>{chapter?.title}</strong>
                   </div>
                   <div>
@@ -741,8 +773,10 @@ export default function App() {
                     <Search size={16} />
                     <input
                       autoFocus
-                      aria-label="Find in chapter"
-                      placeholder="Find in chapter"
+                      aria-label={bible ? "Find in section" : "Find in chapter"}
+                      placeholder={
+                        bible ? "Find in section" : "Find in chapter"
+                      }
                       value={find}
                       onChange={(e) => {
                         setFind(e.target.value);
@@ -796,8 +830,9 @@ export default function App() {
                 )}
                 {chapter && (
                   <Manuscript
-                    key={`${chapter.id}-${editorRevision}`}
+                    key={`${chapter.id}-${editorRevision}-${bible}`}
                     chapter={chapter}
+                    systemBible={bible}
                     onChange={(document) => updateChapter({ document })}
                     onReady={(ed) => (editorRef.current = ed)}
                     preview={preview}
@@ -825,7 +860,7 @@ export default function App() {
               {inspector && chapter && (
                 <aside className="inspector">
                   <div className="inspector-title">
-                    <span>Chapter details</span>
+                    <span>{bible ? "Section details" : "Chapter details"}</span>
                     <button
                       aria-label="Close inspector"
                       onClick={() => setInspector(false)}
@@ -838,86 +873,150 @@ export default function App() {
                     <label>
                       Title
                       <input
-                        aria-label="Chapter title"
+                        aria-label={bible ? "Section title" : "Chapter title"}
                         value={chapter.title}
                         onChange={(e) =>
                           updateChapter({ title: e.target.value })
                         }
                       />
                     </label>
-                    <label>
-                      Status
+                    {bible ? (
+                      <>
+                        <label>
+                          Progress
+                          <select
+                            aria-label="Section progress"
+                            value={chapter.progress || "not-started"}
+                            onChange={(e) =>
+                              updateChapter({
+                                progress: e.target.value as Progress,
+                              })
+                            }
+                          >
+                            {progressOptions.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label>
+                          Section icon
+                          <select
+                            aria-label="Section icon"
+                            value={chapter.icon || "document"}
+                            onChange={(e) =>
+                              updateChapter({
+                                icon: e.target.value as SectionIconName,
+                              })
+                            }
+                          >
+                            {iconOptions.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <div className="section-marker-preview">
+                          <SectionIcon icon={chapter.icon} size={17} />
+                          <span>{chapter.title || "Untitled section"}</span>
+                          <ProgressIcon progress={chapter.progress} size={17} />
+                        </div>
+                      </>
+                    ) : (
+                      <label>
+                        Status
+                        <select
+                          aria-label="Chapter status"
+                          value={chapter.status}
+                          onChange={(e) =>
+                            updateChapter({ status: e.target.value as Status })
+                          }
+                        >
+                          {[
+                            "Idea",
+                            "Outline",
+                            "Draft",
+                            "Revision",
+                            "Editing",
+                            "Final",
+                          ].map((s) => (
+                            <option key={s}>{s}</option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
+                    <label className="parent-section-label">
+                      {bible ? "Parent section" : "Part"}
                       <select
-                        aria-label="Chapter status"
-                        value={chapter.status}
-                        onChange={(e) =>
-                          updateChapter({ status: e.target.value as Status })
-                        }
-                      >
-                        {[
-                          "Idea",
-                          "Outline",
-                          "Draft",
-                          "Revision",
-                          "Editing",
-                          "Final",
-                        ].map((s) => (
-                          <option key={s}>{s}</option>
-                        ))}
-                      </select>
-                    </label>
-                    <label>
-                      Part
-                      <select
-                        aria-label="Chapter part"
+                        aria-label={bible ? "Parent section" : "Chapter part"}
                         value={chapter.parentId || ""}
                         onChange={(e) => {
-                          const parentId = e.target.value || null;
-                          const nodes = book.nodes.filter(
-                            (n) => n.id !== chapter.id,
+                          const moved = reparentNode(
+                            book,
+                            chapter.id,
+                            e.target.value || null,
                           );
-                          const c = { ...chapter, parentId };
-                          if (parentId) {
-                            const last = nodes.reduce(
-                              (index, n, i) =>
-                                n.id === parentId ||
-                                (n.type === "chapter" &&
-                                  n.parentId === parentId)
-                                  ? i
-                                  : index,
-                              0,
+                          updateBook(moved);
+                          setCollapsed((prev) => {
+                            const next = new Set(prev);
+                            ancestors(moved, chapter.id).forEach((n) =>
+                              next.delete(n.id),
                             );
-                            nodes.splice(last + 1, 0, c);
-                          } else nodes.push(c);
-                          updateBook({ ...book, nodes });
+                            return next;
+                          });
                         }}
                       >
-                        <option value="">No part</option>
-                        {book.nodes
-                          .filter((n) => n.type === "part")
-                          .map((n) => (
-                            <option key={n.id} value={n.id}>
-                              {n.title}
+                        <option value="">
+                          {bible ? "Top level" : "No part"}
+                        </option>
+                        {outlineEntries(book)
+                          .filter(
+                            ({ node }) =>
+                              node.id !== chapter.id &&
+                              !descendants(book, chapter.id).some(
+                                (child) => child.id === node.id,
+                              ) &&
+                              (bible ||
+                                node.type === "part" ||
+                                node.id === chapter.parentId),
+                          )
+                          .map(({ node }) => (
+                            <option key={node.id} value={node.id}>
+                              {[
+                                ...ancestors(book, node.id).map((n) => n.title),
+                                node.title,
+                              ].join(" / ")}
                             </option>
                           ))}
                       </select>
                     </label>
-                    <label>
-                      Placement
-                      <select
-                        aria-label="Chapter placement"
-                        value={chapter.kind}
-                        onChange={(e) =>
-                          updateChapter({
-                            kind: e.target.value as Chapter["kind"],
-                          })
-                        }
+                    {bible ? (
+                      <button
+                        className="section-child-button"
+                        onClick={() => newNode("chapter", chapter.id)}
                       >
-                        <option value="chapter">Chapter</option>
-                        <option value="front">Front matter</option>
-                        <option value="back">Back matter</option>
-                      </select>
-                    </label>
+                        <Plus size={15} /> Add child section
+                      </button>
+                    ) : (
+                      <label>
+                        Placement
+                        <select
+                          aria-label="Chapter placement"
+                          value={chapter.kind}
+                          onChange={(e) =>
+                            updateChapter({
+                              kind: e.target.value as Chapter["kind"],
+                            })
+                          }
+                        >
+                          <option value="chapter">Chapter</option>
+                          <option value="front">Front matter</option>
+                          <option value="back">Back matter</option>
+                        </select>
+                      </label>
+                    )}
                   </div>
                   <div className="inspector-section">
                     <div className="section-heading">
@@ -937,38 +1036,42 @@ export default function App() {
                         <span>Reading time</span>
                       </div>
                     </div>
-                    <label className="goal-label">
-                      Chapter goal
-                      <input
-                        type="number"
-                        min="1"
-                        max="1000000"
-                        aria-label="Chapter word goal"
-                        value={chapter.goal || 2000}
-                        onChange={(e) =>
-                          updateChapter({
-                            goal: Math.max(1, Number(e.target.value)),
-                          })
-                        }
-                      />
-                    </label>
-                    <div className="progress-track">
-                      <span
-                        style={{
-                          width: `${Math.min(100, (words / (chapter.goal || 2000)) * 100)}%`,
-                        }}
-                      />
-                    </div>
-                    <p className="goal-caption">
-                      {Math.round((words / (chapter.goal || 2000)) * 100)}% of
-                      your word goal
-                    </p>
+                    {!bible && (
+                      <>
+                        <label className="goal-label">
+                          Chapter goal
+                          <input
+                            type="number"
+                            min="1"
+                            max="1000000"
+                            aria-label="Chapter word goal"
+                            value={chapter.goal || 2000}
+                            onChange={(e) =>
+                              updateChapter({
+                                goal: Math.max(1, Number(e.target.value)),
+                              })
+                            }
+                          />
+                        </label>
+                        <div className="progress-track">
+                          <span
+                            style={{
+                              width: `${Math.min(100, (words / (chapter.goal || 2000)) * 100)}%`,
+                            }}
+                          />
+                        </div>
+                        <p className="goal-caption">
+                          {Math.round((words / (chapter.goal || 2000)) * 100)}%
+                          of your word goal
+                        </p>
+                      </>
+                    )}
                   </div>
                   <div className="inspector-section">
                     <label className="eyebrow">
                       TAGS
                       <input
-                        aria-label="Chapter tags"
+                        aria-label={bible ? "Section tags" : "Chapter tags"}
                         placeholder="e.g. beginner, cpp"
                         value={chapter.tags}
                         onChange={(e) =>
@@ -1007,7 +1110,8 @@ export default function App() {
                         setDialog("chapter");
                       }}
                     >
-                      <Settings2 size={14} /> Chapter actions
+                      <Settings2 size={14} />{" "}
+                      {bible ? "Section actions" : "Chapter actions"}
                     </button>
                     <span>
                       Edited{" "}
@@ -1064,13 +1168,17 @@ export default function App() {
             }}
           >
             <label>
-              Book title
+              {newTemplate === "bible" ? "Project title" : "Book title"}
               <input
                 name="title"
                 autoFocus
                 required
                 maxLength={160}
-                placeholder="The book you want to write"
+                placeholder={
+                  newTemplate === "bible"
+                    ? "e.g. Open Blue"
+                    : "The book you want to write"
+                }
               />
             </label>
             <label>
@@ -1079,17 +1187,27 @@ export default function App() {
             </label>
             <label>
               Start with
-              <select name="template">
+              <select
+                name="template"
+                value={newTemplate}
+                onChange={(e) => setNewTemplate(e.target.value)}
+              >
                 <option value="technical">
                   Technical book — preface, part, chapter, appendix
                 </option>
                 <option value="blank">Blank book — a fresh page</option>
+                <option value="bible">
+                  System bible — overview, systems, and nested features
+                </option>
               </select>
             </label>
             <div className="modal-footer">
               <span>Yours, from the very first word.</span>
               <button className="primary" type="submit">
-                Create book <ArrowRight size={16} />
+                {newTemplate === "bible"
+                  ? "Create system bible"
+                  : "Create book"}{" "}
+                <ArrowRight size={16} />
               </button>
             </div>
           </form>
@@ -1097,8 +1215,12 @@ export default function App() {
       )}
       {dialog === "book" && editedBook && (
         <Modal
-          title="About this book"
-          subtitle="The details behind your manuscript."
+          title={
+            editedBook.mode === "bible"
+              ? "About this system bible"
+              : "About this book"
+          }
+          subtitle="Your project details and organization."
           close={() => setDialog(null)}
         >
           <form
@@ -1107,11 +1229,14 @@ export default function App() {
               const data = new FormData(e.currentTarget);
               updateBook({
                 ...editedBook,
+                mode: String(data.get("mode")) as "book" | "bible",
                 title: String(data.get("title")).trim(),
                 subtitle: String(data.get("subtitle")),
                 author: String(data.get("author")),
                 description: String(data.get("description")),
-                goal: Number(data.get("goal")),
+                goal:
+                  Number(data.get("goal")) ||
+                  (data.get("mode") === "book" ? 50000 : 0),
                 color: String(data.get("color")),
                 language: String(data.get("language")),
               });
@@ -1126,6 +1251,17 @@ export default function App() {
                 name="title"
                 defaultValue={editedBook.title}
               />
+            </label>
+            <label>
+              Project type
+              <select name="mode" defaultValue={editedBook.mode || "book"}>
+                <option value="book">Book</option>
+                <option value="bible">System bible</option>
+              </select>
+              <small>
+                Switch views any time. Your writing and section hierarchy stay
+                intact.
+              </small>
             </label>
             <label>
               Subtitle
@@ -1157,7 +1293,7 @@ export default function App() {
                 <input
                   name="goal"
                   type="number"
-                  min="1"
+                  min={editedBook.mode === "bible" ? "0" : "1"}
                   max="10000000"
                   defaultValue={editedBook.goal}
                 />
@@ -1208,7 +1344,11 @@ export default function App() {
       )}
       {(dialog === "chapter" || dialog === "part") && book && (
         <Modal
-          title={nodeEdit ? `Edit ${dialog}` : `A new ${dialog}`}
+          title={
+            nodeEdit
+              ? `Edit ${dialog === "part" ? "part" : sectionName}`
+              : `A new ${dialog === "part" ? "part" : sectionName}`
+          }
           subtitle={
             dialog === "part"
               ? "Gather related chapters into a part."
@@ -1236,20 +1376,14 @@ export default function App() {
               } else {
                 const parentId = String(data.get("parent")) || null;
                 const c = makeChapter(title, parentId);
-                const nodes = [...book.nodes];
-                if (parentId) {
-                  const last = nodes.reduce(
-                    (index, n, i) =>
-                      n.id === parentId ||
-                      (n.type === "chapter" && n.parentId === parentId)
-                        ? i
-                        : index,
-                    0,
-                  );
-                  nodes.splice(last + 1, 0, c);
-                } else nodes.push(c);
-                updateBook({ ...book, nodes });
-                setChapterId(c.id);
+                if (bible) {
+                  c.icon = String(data.get("icon")) as SectionIconName;
+                  c.progress = String(data.get("progress")) as Progress;
+                  c.goal = 0;
+                }
+                const created = insertChapter(book, c);
+                updateBook(created);
+                revealSection(c.id, created);
               }
               setDialog(null);
             }}
@@ -1269,19 +1403,53 @@ export default function App() {
               />
             </label>
             {dialog === "chapter" && !nodeEdit && (
-              <label>
-                Part
-                <select name="parent" defaultValue={chapter?.parentId || ""}>
-                  <option value="">No part</option>
-                  {book.nodes
-                    .filter((n) => n.type === "part")
-                    .map((n) => (
-                      <option key={n.id} value={n.id}>
-                        {n.title}
-                      </option>
-                    ))}
-                </select>
-              </label>
+              <>
+                <label>
+                  {bible ? "Parent section" : "Part"}
+                  <select name="parent" defaultValue={newParentId || ""}>
+                    <option value="">{bible ? "Top level" : "No part"}</option>
+                    {outlineEntries(book)
+                      .filter(
+                        ({ node }) =>
+                          bible ||
+                          node.type === "part" ||
+                          node.id === newParentId,
+                      )
+                      .map(({ node }) => (
+                        <option key={node.id} value={node.id}>
+                          {[
+                            ...ancestors(book, node.id).map((n) => n.title),
+                            node.title,
+                          ].join(" / ")}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+                {bible && (
+                  <div className="form-row">
+                    <label>
+                      Section icon
+                      <select name="icon" defaultValue="layers">
+                        {iconOptions.map((o) => (
+                          <option key={o.value} value={o.value}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Progress
+                      <select name="progress" defaultValue="not-started">
+                        {progressOptions.map((o) => (
+                          <option key={o.value} value={o.value}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                )}
+              </>
             )}
             {nodeEdit && (
               <div className="node-actions">
@@ -1310,13 +1478,16 @@ export default function App() {
                   className="danger"
                   onClick={() => removeNode(nodeEdit)}
                 >
-                  <Trash2 size={15} /> Delete {dialog}
+                  <Trash2 size={15} /> Delete{" "}
+                  {dialog === "part" ? "part" : sectionName}
                 </button>
               ) : (
                 <span />
               )}
               <button className="primary" type="submit">
-                {nodeEdit ? "Save title" : `Create ${dialog}`}
+                {nodeEdit
+                  ? "Save title"
+                  : `Create ${dialog === "part" ? "part" : sectionName}`}
               </button>
             </div>
           </form>
@@ -1374,7 +1545,9 @@ export default function App() {
             ))}
           </div>
           <div className="export-summary">
-            <span>{chapters(book).length} chapters</span>
+            <span>
+              {chapters(book).length} {bible ? "sections" : "chapters"}
+            </span>
             <span>{bookWords(book).toLocaleString()} words</span>
             <span>
               {exportFormat === "project"
@@ -1414,7 +1587,11 @@ export default function App() {
               }}
             >
               <Download size={16} /> Export{" "}
-              {exportFormat === "project" ? "project" : "book"}
+              {exportFormat === "project"
+                ? "project"
+                : bible
+                  ? "system bible"
+                  : "book"}
             </button>
           </div>
         </Modal>
@@ -1478,7 +1655,7 @@ export default function App() {
                     <button
                       key={c.id}
                       onClick={() => {
-                        setChapterId(c.id);
+                        revealSection(c.id);
                         setDialog(null);
                         setFind(query);
                         setFindOpen(true);
@@ -1487,6 +1664,13 @@ export default function App() {
                       <FileText size={18} />
                       <span>
                         <strong>{c.title}</strong>
+                        {bible && (
+                          <small>
+                            {ancestors(book, c.id)
+                              .map((n) => n.title)
+                              .join(" / ") || "Top level"}
+                          </small>
+                        )}
                         <p>
                           {(() => {
                             const s = docText(c.document);
@@ -1683,6 +1867,14 @@ export default function App() {
               <strong>Make room for change.</strong> Drag chapters onto a part
               or above another chapter. Chapter details also let you move a
               chapter between parts.
+            </p>
+            <p>
+              <strong>Build a system bible.</strong> Choose New system bible on
+              the bookshelf, or change Project type in your project settings.
+              Add child sections for systems, features, and deeper details.
+              Section details lets you choose an icon, set progress, or move a
+              whole branch to a new parent. Each section keeps its own progress;
+              completing a parent does not complete its children.
             </p>
             <p>
               <strong>Keep a copy.</strong> Autosave runs as you write. Export a

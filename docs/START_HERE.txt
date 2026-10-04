@@ -1,19 +1,32 @@
-CODEBOOK 0.1 — EARLY EDITION
+CODEBOOK 0.2 — BOOKS AND SYSTEM BIBLES
 
 Extract the ZIP, then double-click CodeBook.exe.
 
 No account, internet connection, Node.js, or Rust is needed to write.
-The app uses the Microsoft Edge WebView2 runtime included on this machine.
+Requires 64-bit Windows 10/11 and Microsoft Edge WebView2.
 
-Open the Learning C++ sample, or choose New book to start writing.
+Open the Learning C++ sample, choose New book, or choose New system bible.
+A system bible starts with an Overview. Select a section and choose
+Add child section to build systems, sub-systems, and features below it.
 
-Your books are saved in your Windows app-data folder, not beside the EXE.
-The Preferences screen shows the exact location. Moving the EXE does not
-move your library. Use Export > CodeBook project to back up or transfer
-a complete book, including notes and images.
+Use Section icon and Progress in the details panel to mark each section.
+Progress choices are Not started, In progress, Complete, Blocked, and
+On hold. Each section's progress is independent.
 
-This release implements the core writing MVP. PDF, EPUB, DOCX, AI, sync,
-and collaboration are not included. See README.md for the feature list
-and limitations, and VALIDATION.md for testing evidence.
+Use Parent section to move an entire branch. Drag to reorder siblings,
+or use the move actions. Deleting a parent keeps its child sections and
+their writing one level higher.
+
+To change an existing book into a system bible, open its settings beside
+the project title and change Project type. Writing and hierarchy stay intact.
+
+Your projects are saved in your Windows app-data folder, not beside the EXE.
+Preferences shows the exact location. Moving the EXE does not move your
+library. Use Export > CodeBook project to back up or transfer a complete
+project, including its hierarchy, icons, progress, notes, and images.
+Markdown and HTML exports preserve a system bible's nested organization.
+
+PDF, EPUB, DOCX, AI, sync, and collaboration are not included. See README.md
+for the feature list and limitations, and VALIDATION.md for testing evidence.
 
 The executable is unsigned.

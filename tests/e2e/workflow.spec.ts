@@ -39,15 +39,13 @@ test("native clipboard format retains code metadata and takes priority over HTML
   await page.keyboard.press("Control+a");
   const clipboard = await page.evaluate(() => {
     const data = new DataTransfer();
-    document
-      .querySelector(".tiptap")!
-      .dispatchEvent(
-        new ClipboardEvent("copy", {
-          clipboardData: data,
-          bubbles: true,
-          cancelable: true,
-        }),
-      );
+    document.querySelector(".tiptap")!.dispatchEvent(
+      new ClipboardEvent("copy", {
+        clipboardData: data,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
     return {
       native: data.getData("application/x-codebook"),
       html: data.getData("text/html"),
@@ -70,15 +68,13 @@ test("native clipboard format retains code metadata and takes priority over HTML
     const dt = new DataTransfer();
     dt.setData("application/x-codebook", data.native);
     dt.setData("text/html", "<p>Lower priority</p>");
-    document
-      .querySelector(".tiptap")!
-      .dispatchEvent(
-        new ClipboardEvent("paste", {
-          clipboardData: dt,
-          bubbles: true,
-          cancelable: true,
-        }),
-      );
+    document.querySelector(".tiptap")!.dispatchEvent(
+      new ClipboardEvent("paste", {
+        clipboardData: dt,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
   }, clipboard);
   await expect(page.getByLabel("Code filename")).toHaveValue("hello.cpp");
   await expect(
@@ -107,15 +103,13 @@ test("HTML paste is sanitized and browser image files remain embedded", async ({
       "text/html",
       '<h2>Browser content</h2><p><strong>Bold</strong> and <em>italic</em>.</p><pre><code class="language-python"><span>print</span>("hello")</code></pre><table><tr><th>A</th><th>B</th></tr><tr><td>1</td><td>2</td></tr></table><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jL1EAAAAASUVORK5CYII=" alt="pixel" onerror="window.unsafe=true"><script>window.unsafe=true</script>',
     );
-    document
-      .querySelector(".tiptap")!
-      .dispatchEvent(
-        new ClipboardEvent("paste", {
-          clipboardData: dt,
-          bubbles: true,
-          cancelable: true,
-        }),
-      );
+    document.querySelector(".tiptap")!.dispatchEvent(
+      new ClipboardEvent("paste", {
+        clipboardData: dt,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
   });
   await expect(page.locator(".manuscript h2")).toHaveText("Browser content");
   await expect(page.locator(".manuscript strong")).toHaveText("Bold");
@@ -154,7 +148,10 @@ test("chapter drag ordering and part changes survive reload", async ({
   await expect(
     page.getByRole("button", { name: /01 Variables & types/ }),
   ).toBeVisible();
-  await page.getByRole("button", { name: /Hello, World!/ }).click();
+  await page
+    .locator(".book-tree .chapter-row")
+    .filter({ hasText: "Hello, World!" })
+    .click();
   await expect(page.getByLabel("Chapter part")).toHaveValue(partId!);
 });
 test("create, edit, move, save, reopen, search, and export a real book", async ({
@@ -253,7 +250,10 @@ test("pastes the exact technical acceptance fixture and preserves it after reloa
   await page
     .getByRole("button", { name: "Open Learning C++", exact: true })
     .click();
-  await page.getByRole("button", { name: /Clipboard acceptance/ }).click();
+  await page
+    .locator(".book-tree .chapter-row")
+    .filter({ hasText: "Clipboard acceptance" })
+    .click();
   await expect(page.getByLabel("Code filename")).toHaveValue("acceptance.cpp");
   await expect(page.locator(".manuscript h3")).toHaveText("What happened?");
 });

@@ -31,6 +31,7 @@ import { DOMSerializer } from "@tiptap/pm/model";
 
 interface Props {
   chapter: Chapter;
+  systemBible?: boolean;
   onChange: (doc: JSONContent) => void;
   onReady: (editor: Editor | null) => void;
   preview: boolean;
@@ -40,6 +41,7 @@ interface Props {
 }
 export default function Manuscript({
   chapter,
+  systemBible = false,
   onChange,
   onReady,
   preview,
@@ -69,7 +71,7 @@ export default function Manuscript({
     editorProps: {
       attributes: {
         class: "manuscript",
-        "aria-label": "Chapter manuscript",
+        "aria-label": systemBible ? "Section content" : "Chapter manuscript",
         role: "textbox",
         "aria-multiline": "true",
         spellcheck: "true",
@@ -432,11 +434,13 @@ export default function Manuscript({
           style={{ "--editor-size": `${fontSize}px` } as React.CSSProperties}
         >
           <div className="chapter-eyebrow">
-            {chapter.kind === "front"
-              ? "FRONT MATTER"
-              : chapter.kind === "back"
-                ? "BACK MATTER"
-                : "THE MANUSCRIPT"}
+            {systemBible
+              ? "SYSTEM BIBLE · SECTION"
+              : chapter.kind === "front"
+                ? "FRONT MATTER"
+                : chapter.kind === "back"
+                  ? "BACK MATTER"
+                  : "THE MANUSCRIPT"}
             <span />
           </div>
           <h1 className="chapter-title">{chapter.title}</h1>

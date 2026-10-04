@@ -2520,3 +2520,82 @@ button.active {
     scroll-behavior: auto !important;
   }
 }
+
+/* System bible: give layered sections room, and retain a quiet writing surface. */
+.bible-workspace .structure {
+  width: 310px;
+  padding: 0 12px;
+}
+.bible-workspace .structure-book {
+  padding-bottom: 18px;
+}
+.bible-workspace .inspector-section label:not(.eyebrow) {
+  display: block;
+  width: 100%;
+  margin-right: 0;
+}
+.bible-workspace .inspector-section .section-marker-preview {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 14px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--ink);
+  background: var(--paper);
+}
+.section-marker-preview > span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}
+.section-child-button {
+  margin-top: 14px;
+  padding: 8px;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  color: var(--accent);
+  font-size: 11px;
+}
+.inspector-section .parent-section-label {
+  display: block !important;
+  width: 100% !important;
+}
+.breadcrumb {
+  min-width: 0;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.breadcrumb-parent {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.breadcrumb-parent button {
+  color: inherit;
+  padding: 0;
+  font-size: inherit;
+}
+.breadcrumb-parent button:hover {
+  text-decoration: underline;
+}
+.breadcrumb strong {
+  flex-shrink: 0;
+}
+.search-results small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 10px;
+}
+@media (max-width: 1200px) {
+  .bible-workspace .structure {
+    width: 264px;
+  }
+}

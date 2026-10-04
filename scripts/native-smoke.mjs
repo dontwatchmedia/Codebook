@@ -50,6 +50,46 @@ async function kill() {
   await browser?.close().catch(() => {});
   await new Promise((r) => setTimeout(r, 600));
 }
+async function projectByTitle(title) {
+  const dirs = (await readdir(booksDir, { withFileTypes: true }))
+    .filter(
+      (entry) =>
+        entry.isDirectory() &&
+        entry.name !== "trash" &&
+        entry.name !== "recovery",
+    )
+    .map((entry) => entry.name);
+  for (const dir of dirs) {
+    const projectPath = path.join(booksDir, dir, "book.json");
+    const project = JSON.parse(await readFile(projectPath, "utf8"));
+    if (project.title === title) return { project, projectPath, dir };
+  }
+  throw new Error(`Native project file not found: ${title}`);
+}
+function assertBible(project, content) {
+  expect(project.mode).toBe("bible");
+  const titles = [
+    "Overview",
+    "Living City",
+    "Housing",
+    "Interiors",
+    "Placement rules",
+  ];
+  let parentId = null;
+  for (const title of titles) {
+    const section = project.nodes.find((node) => node.title === title);
+    expect(section, `Native section ${title} exists`).toBeDefined();
+    expect(section.type).toBe("chapter");
+    expect(section.parentId).toBe(parentId);
+    parentId = section.id;
+  }
+  const placement = project.nodes.find(
+    (node) => node.title === "Placement rules",
+  );
+  expect(placement.progress).toBe("blocked");
+  expect(placement.icon).toBe("hammer");
+  expect(JSON.stringify(placement.document)).toContain(content);
+}
 try {
   await launch();
   await expect(
@@ -107,7 +147,10 @@ try {
   await page
     .getByRole("button", { name: "Open Learning C++", exact: true })
     .click();
-  await page.getByRole("button", { name: /Native persistence check/ }).click();
+  await page
+    .locator(".book-tree .chapter-row")
+    .filter({ hasText: "Native persistence check" })
+    .click();
   await expect(
     page.getByRole("textbox", { name: "Chapter manuscript" }),
   ).toContainText("These words are saved atomically");
@@ -128,7 +171,10 @@ try {
   await page
     .getByRole("button", { name: "Open Learning C++", exact: true })
     .click();
-  await page.getByRole("button", { name: /Native persistence check/ }).click();
+  await page
+    .locator(".book-tree .chapter-row")
+    .filter({ hasText: "Native persistence check" })
+    .click();
   await expect(
     page.getByRole("textbox", { name: "Chapter manuscript" }),
   ).toContainText("A last unsaved idea should come back after a crash.");
@@ -137,6 +183,113 @@ try {
     .waitFor();
   evidence.checks.push(
     "Unsaved edit recovered from journal after forced termination before autosave",
+  );
+  await page
+    .getByRole("button", { name: "Your bookshelf", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "New system bible", exact: true })
+    .click();
+  await page
+    .getByRole("dialog")
+    .getByLabel("Project title")
+    .fill("Native system bible");
+  await page
+    .getByRole("button", { name: "Create system bible", exact: true })
+    .click();
+  for (const [parentTitle, title] of [
+    ["Overview", "Living City"],
+    ["Living City", "Housing"],
+    ["Housing", "Interiors"],
+    ["Interiors", "Placement rules"],
+  ]) {
+    await page
+      .locator(".book-tree")
+      .getByRole("button", { name: `Add child to ${parentTitle}`, exact: true })
+      .click();
+    await page
+      .getByRole("dialog")
+      .getByLabel("Title", { exact: true })
+      .fill(title);
+    await page
+      .getByRole("button", { name: "Create section", exact: true })
+      .click();
+    await expect(page.getByLabel("Section title", { exact: true })).toHaveValue(
+      title,
+    );
+  }
+  const sectionEditor = () =>
+    page.getByRole("textbox", { name: "Section content", exact: true });
+  const savedBibleText =
+    "Furniture placement rules live four layers below the overview.";
+  await sectionEditor().fill(savedBibleText);
+  await page
+    .getByLabel("Section progress", { exact: true })
+    .selectOption("blocked");
+  await page.getByLabel("Section icon", { exact: true }).selectOption("hammer");
+  await page
+    .getByRole("button", { name: "Saved on this device", exact: true })
+    .waitFor();
+  const savedBible = await projectByTitle("Native system bible");
+  assertBible(savedBible.project, savedBibleText);
+  evidence.checks.push(
+    "Native system bible autosave preserved five nested sections, parent relationships, progress and icons in book.json",
+  );
+  await kill();
+  await launch();
+  await page
+    .getByRole("button", { name: "Open Native system bible", exact: true })
+    .click();
+  await page
+    .locator(".book-tree .chapter-row")
+    .filter({ hasText: "Placement rules" })
+    .click();
+  await expect(sectionEditor()).toContainText(savedBibleText);
+  await expect(
+    page.getByLabel("Section progress", { exact: true }),
+  ).toHaveValue("blocked");
+  await expect(page.getByLabel("Section icon", { exact: true })).toHaveValue(
+    "hammer",
+  );
+  await expect(
+    page.locator(".outline-row").filter({ hasText: "Placement rules" }),
+  ).toHaveAttribute("data-depth", "4");
+  await page.screenshot({ path: path.join(root, "native-system-bible.png") });
+  evidence.checks.push(
+    "Deep system-bible content, tree depth, progress and section icon survived native restart",
+  );
+  const recoveredBibleText =
+    "A last unsaved placement rule survives a crash inside a nested system.";
+  await sectionEditor().fill(recoveredBibleText);
+  await kill();
+  await launch();
+  await expect(
+    page.getByRole("dialog", { name: "Your words are still here." }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Restore changes", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Open Native system bible", exact: true })
+    .click();
+  await page
+    .locator(".book-tree .chapter-row")
+    .filter({ hasText: "Placement rules" })
+    .click();
+  await expect(sectionEditor()).toContainText(recoveredBibleText);
+  await expect(
+    page.getByLabel("Section progress", { exact: true }),
+  ).toHaveValue("blocked");
+  await expect(page.getByLabel("Section icon", { exact: true })).toHaveValue(
+    "hammer",
+  );
+  await page
+    .getByRole("button", { name: "Saved on this device", exact: true })
+    .waitFor();
+  const recoveredBible = await projectByTitle("Native system bible");
+  assertBible(recoveredBible.project, recoveredBibleText);
+  evidence.checks.push(
+    "Nested system-bible edit recovered from a crash journal and saved with its complete hierarchy and metadata",
   );
   expect(evidence.errors).toEqual([]);
   evidence.checks.push("No JavaScript runtime errors during native workflow");

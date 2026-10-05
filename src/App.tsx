@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Editor, JSONContent } from "@tiptap/core";
 import {
   ArrowLeft,
@@ -35,6 +35,13 @@ import Library from "./components/Library";
 import ThemeToggle from "./components/ThemeToggle";
 import ThemePicker from "./components/ThemePicker";
 import OutlineTree from "./components/OutlineTree";
+import OutlinePanel from "./components/OutlinePanel";
+import PdfExport from "./components/PdfExport";
+import {
+  readCollapsedSections,
+  saveCollapsedSections,
+} from "./outlinePreferences";
+import { estimatePDFPages, readPDFOptions, type PDFOptions } from "./pdf";
 import InlineRename from "./components/InlineRename";
 import SidebarResizer, {
   useResizableSidebar,
@@ -132,6 +139,7 @@ type Dialog =
   | "chapter"
   | "part"
   | "export"
+  | "pdf"
   | "search"
   | "preferences"
   | "help"
@@ -186,6 +194,13 @@ export default function App() {
     revision: number;
   } | null>(null);
   const [editorRevision, setEditorRevision] = useState(0);
+  const [pdfOptions, setPdfOptions] = useState(readPDFOptions);
+  const [pdfCount, setPdfCount] = useState<{
+    bookId: string;
+    modified: string;
+    settings: PDFOptions;
+    count: number;
+  } | null>(null);
   const [backups, setBackups] = useState<Backup[]>([]),
     [path, setPath] = useState(""),
     [exportFormat, setExportFormat] = useState("markdown");
@@ -202,6 +217,19 @@ export default function App() {
     chapter =
       book &&
       (chapters(book).find((c) => c.id === chapterId) || chapters(book)[0]);
+  const pageEstimate = useMemo(
+    () => (book ? estimatePDFPages(book, pdfOptions) : 0),
+    [book, pdfOptions],
+  );
+  const exactPageCount =
+    pdfCount?.bookId === book?.id &&
+    pdfCount?.modified === book?.modified &&
+    JSON.stringify(pdfCount?.settings) === JSON.stringify(pdfOptions)
+      ? pdfCount?.count
+      : null;
+  useEffect(() => {
+    if (book) saveCollapsedSections(book.id, Array.from(collapsed));
+  }, [book?.id, collapsed]);
   const editedBook = books.find((b) => b.id === editBookId) || book;
   const bible = book?.mode === "bible";
   const sectionName = bible ? "section" : "chapter";
@@ -376,7 +404,13 @@ export default function App() {
   }, [book]);
   function openBook(b: Book) {
     setActiveId(b.id);
-    setCollapsed(new Set());
+    setCollapsed(
+      new Set(
+        readCollapsedSections(b.id).filter((id) =>
+          b.nodes.some((node) => node.id === id),
+        ),
+      ),
+    );
     const remembered = readLastChapter(b.id);
     const resume =
       chapters(b).find((c) => c.id === remembered)?.id ||
@@ -678,224 +712,267 @@ export default function App() {
                 ref={sidebar.sidebarRef}
                 style={sidebar.sidebarStyle}
               >
-                <button
-                  className="back-library"
-                  onClick={() => {
-                    void flush();
-                    setActiveId(null);
-                  }}
-                >
-                  <ArrowLeft size={14} /> Your bookshelf
-                </button>
-                <div className="structure-book">
-                  <div className="eyebrow">
-                    {bible ? "SYSTEM BIBLE" : "THE BOOK"}
-                  </div>
-                  {projectRename?.id === book.id ? (
-                    <InlineRename
-                      className="project-rename"
-                      label="Rename project"
-                      value={projectRename.title}
-                      onCancel={() => setProjectRename(null)}
-                      onCommit={(title) => {
-                        const current = booksRef.current.find(
-                          (b) => b.id === book.id,
-                        );
-                        if (current) updateBook({ ...current, title });
-                        setProjectRename(null);
-                      }}
-                    />
-                  ) : (
-                    <h2>
-                      <button
-                        className="project-title-button"
-                        title="Double-click or press F2 to rename"
-                        onDoubleClick={() =>
-                          setProjectRename({ id: book.id, title: book.title })
-                        }
-                        onKeyDown={(event) => {
-                          if (event.key === "F2") {
-                            event.preventDefault();
-                            setProjectRename({
-                              id: book.id,
-                              title: book.title,
-                            });
-                          }
-                        }}
-                      >
-                        {book.title}
-                      </button>
-                    </h2>
-                  )}
-                  <p>{book.subtitle || "A work in progress"}</p>
-                </div>
-                <div className="structure-label">
-                  <span>{bible ? "SYSTEMS & SECTIONS" : "MANUSCRIPT"}</span>
-                  <button
-                    aria-label="Book settings"
-                    onClick={() => {
-                      setEditBookId(book.id);
-                      setDialog("book");
-                    }}
-                  >
-                    <MoreHorizontal size={18} />
-                  </button>
-                </div>
-                <OutlineTree
-                  book={book}
-                  activeId={chapter?.id || ""}
-                  collapsed={collapsed}
-                  onToggle={(id) =>
-                    setCollapsed((prev) => {
-                      const next = new Set(prev);
-                      next.has(id) ? next.delete(id) : next.add(id);
-                      return next;
-                    })
-                  }
-                  onSelect={revealSection}
-                  onRename={(id, title) => {
-                    const current = booksRef.current.find(
-                      (b) => b.id === book.id,
-                    );
-                    if (current)
-                      updateBook({
-                        ...current,
-                        nodes: current.nodes.map((node) =>
-                          node.id === id
-                            ? {
-                                ...node,
-                                title,
-                                ...(node.type === "chapter"
-                                  ? { modified: now() }
-                                  : {}),
-                              }
-                            : node,
-                        ),
-                      });
-                  }}
-                  onEmojiChange={(id, emoji) => {
-                    const current = booksRef.current.find(
-                      (b) => b.id === book.id,
-                    );
-                    if (current)
-                      updateBook({
-                        ...current,
-                        nodes: current.nodes.map((node) =>
-                          node.id === id && node.type === "chapter"
-                            ? { ...node, emoji, modified: now() }
-                            : node,
-                        ),
-                      });
-                  }}
-                  onEdit={(node) => {
-                    setNodeEdit(node);
-                    setDialog(node.type);
-                  }}
-                  onMove={(movingId, targetId, placement) => {
-                    const current = booksRef.current.find(
-                      (candidate) => candidate.id === book.id,
-                    );
-                    if (!current) return;
-                    const moved = moveNode(
-                      current,
-                      movingId,
-                      targetId,
-                      placement,
-                    );
-                    if (moved === current) return;
-                    updateBook(moved);
-                    if (
-                      chapter &&
-                      (movingId === chapter.id ||
-                        descendants(book, movingId).some(
-                          (n) => n.id === chapter.id,
-                        ))
-                    )
-                      revealSection(chapter.id, moved);
-                  }}
-                  onImportFiles={(files, targetId, placement) =>
-                    void importFiles(files, targetId, placement)
-                  }
-                  onAddChild={(parentId) => newNode("chapter", parentId)}
-                />
-                <div className="structure-add">
-                  <button
-                    onClick={() => newNode("chapter", bible ? null : undefined)}
-                  >
-                    <Plus size={16} /> Add {sectionName}
-                  </button>
-                  {bible ? (
+                <OutlinePanel
+                  backButton={
                     <button
-                      onClick={() => newNode("chapter", chapter?.id || null)}
+                      className="back-library"
+                      onClick={() => {
+                        void flush();
+                        setActiveId(null);
+                      }}
                     >
-                      <FolderPlus size={16} /> Add child section
+                      <ArrowLeft size={14} /> Your bookshelf
                     </button>
-                  ) : (
-                    <button onClick={() => newNode("part")}>
-                      <FolderPlus size={16} /> Add part
-                    </button>
-                  )}
-                  <button onClick={() => importRef.current?.click()}>
-                    <Upload size={15} /> Import {sectionName}s
-                  </button>
-                </div>
-                <div className="book-progress">
-                  <div>
-                    <span>
-                      {bible ? "SYSTEM PROGRESS" : "YOUR BOOK, TAKING SHAPE"}
-                    </span>
-                    <LeafIcon />
-                  </div>
-                  {bible ? (
-                    <>
-                      <p>
-                        <strong>
-                          {
-                            chapters(book).filter(
-                              (c) => c.progress === "complete",
-                            ).length
+                  }
+                  projectTitle={
+                    projectRename?.id === book.id ? (
+                      <InlineRename
+                        className="project-rename"
+                        label="Rename project"
+                        value={projectRename.title}
+                        onCancel={() => setProjectRename(null)}
+                        onCommit={(title) => {
+                          const current = booksRef.current.find(
+                            (b) => b.id === book.id,
+                          );
+                          if (current) updateBook({ ...current, title });
+                          setProjectRename(null);
+                        }}
+                      />
+                    ) : (
+                      <h2>
+                        <button
+                          className="project-title-button"
+                          title="Double-click or press F2 to rename"
+                          onDoubleClick={() =>
+                            setProjectRename({ id: book.id, title: book.title })
                           }
-                        </strong>
-                        <span>
-                          {" "}
-                          / {chapters(book).length} sections complete
-                        </span>
-                      </p>
-                      <div className="progress-track">
-                        <span
-                          style={{
-                            width: `${(chapters(book).filter((c) => c.progress === "complete").length / chapters(book).length) * 100}%`,
+                          onKeyDown={(event) => {
+                            if (event.key === "F2") {
+                              event.preventDefault();
+                              setProjectRename({
+                                id: book.id,
+                                title: book.title,
+                              });
+                            }
                           }}
-                        />
-                      </div>
-                      <small>Progress is set for each section.</small>
-                    </>
-                  ) : (
+                        >
+                          {book.title}
+                        </button>
+                      </h2>
+                    )
+                  }
+                  label={bible ? "SYSTEMS & SECTIONS" : "MANUSCRIPT"}
+                  settingsButton={
+                    <button
+                      aria-label="Book settings"
+                      onClick={() => {
+                        setEditBookId(book.id);
+                        setDialog("book");
+                      }}
+                    >
+                      <MoreHorizontal size={18} />
+                    </button>
+                  }
+                  hasBranches={chapters(book).some((node) => !!node.parentId)}
+                  onExpandAll={() => setCollapsed(new Set())}
+                  onCollapseAll={() =>
+                    setCollapsed(
+                      new Set(
+                        chapters(book)
+                          .map((node) => node.parentId)
+                          .filter((id): id is string => !!id),
+                      ),
+                    )
+                  }
+                  summary={
+                    <div className="outline-book-totals">
+                      <span>{bookWords(book).toLocaleString()} words</span>
+                      <button
+                        className="outline-page-count"
+                        onClick={() => setDialog("pdf")}
+                        title={
+                          exactPageCount == null
+                            ? "Estimated pages. Open PDF export for an exact count."
+                            : "Pages in the prepared PDF. Open PDF export."
+                        }
+                      >
+                        {exactPageCount == null
+                          ? `~${pageEstimate.toLocaleString()} pages (est.)`
+                          : `${exactPageCount.toLocaleString()} PDF pages`}
+                      </button>
+                    </div>
+                  }
+                  footer={
                     <>
-                      <p>
-                        <strong>{bookWords(book).toLocaleString()}</strong>
-                        <span>
-                          {" "}
-                          / {(book.goal || 50000).toLocaleString()} words
-                        </span>
-                      </p>
-                      <div className="progress-track">
-                        <span
-                          style={{
-                            width: `${Math.min(100, (bookWords(book) / (book.goal || 50000)) * 100)}%`,
-                          }}
-                        />
+                      {" "}
+                      <div className="structure-add">
+                        <button
+                          onClick={() =>
+                            newNode("chapter", bible ? null : undefined)
+                          }
+                        >
+                          <Plus size={16} /> Add {sectionName}
+                        </button>
+                        {bible ? (
+                          <button
+                            onClick={() =>
+                              newNode("chapter", chapter?.id || null)
+                            }
+                          >
+                            <FolderPlus size={16} /> Add child section
+                          </button>
+                        ) : (
+                          <button onClick={() => newNode("part")}>
+                            <FolderPlus size={16} /> Add part
+                          </button>
+                        )}
+                        <button onClick={() => importRef.current?.click()}>
+                          <Upload size={15} /> Import {sectionName}s
+                        </button>
                       </div>
-                      <small>One word closer.</small>
+                      <div className="book-progress">
+                        <div>
+                          <span>
+                            {bible
+                              ? "SYSTEM PROGRESS"
+                              : "YOUR BOOK, TAKING SHAPE"}
+                          </span>
+                          <LeafIcon />
+                        </div>
+                        {bible ? (
+                          <>
+                            <p>
+                              <strong>
+                                {
+                                  chapters(book).filter(
+                                    (c) => c.progress === "complete",
+                                  ).length
+                                }
+                              </strong>
+                              <span>
+                                {" "}
+                                / {chapters(book).length} sections complete
+                              </span>
+                            </p>
+                            <div className="progress-track">
+                              <span
+                                style={{
+                                  width: `${(chapters(book).filter((c) => c.progress === "complete").length / chapters(book).length) * 100}%`,
+                                }}
+                              />
+                            </div>
+                            <small>Progress is set for each section.</small>
+                          </>
+                        ) : (
+                          <>
+                            <p>
+                              <strong>
+                                {bookWords(book).toLocaleString()}
+                              </strong>
+                              <span>
+                                {" "}
+                                / {(book.goal || 50000).toLocaleString()} words
+                              </span>
+                            </p>
+                            <div className="progress-track">
+                              <span
+                                style={{
+                                  width: `${Math.min(100, (bookWords(book) / (book.goal || 50000)) * 100)}%`,
+                                }}
+                              />
+                            </div>
+                            <small>One word closer.</small>
+                          </>
+                        )}
+                      </div>
+                      <button
+                        className="structure-help"
+                        onClick={() => setDialog("help")}
+                      >
+                        <CircleHelp size={15} /> A little guidance <kbd>?</kbd>
+                      </button>
                     </>
-                  )}
-                </div>
-                <button
-                  className="structure-help"
-                  onClick={() => setDialog("help")}
+                  }
                 >
-                  <CircleHelp size={15} /> A little guidance <kbd>?</kbd>
-                </button>
+                  <OutlineTree
+                    book={book}
+                    activeId={chapter?.id || ""}
+                    collapsed={collapsed}
+                    onToggle={(id) =>
+                      setCollapsed((prev) => {
+                        const next = new Set(prev);
+                        next.has(id) ? next.delete(id) : next.add(id);
+                        return next;
+                      })
+                    }
+                    onSelect={revealSection}
+                    onRename={(id, title) => {
+                      const current = booksRef.current.find(
+                        (b) => b.id === book.id,
+                      );
+                      if (current)
+                        updateBook({
+                          ...current,
+                          nodes: current.nodes.map((node) =>
+                            node.id === id
+                              ? {
+                                  ...node,
+                                  title,
+                                  ...(node.type === "chapter"
+                                    ? { modified: now() }
+                                    : {}),
+                                }
+                              : node,
+                          ),
+                        });
+                    }}
+                    onEmojiChange={(id, emoji) => {
+                      const current = booksRef.current.find(
+                        (b) => b.id === book.id,
+                      );
+                      if (current)
+                        updateBook({
+                          ...current,
+                          nodes: current.nodes.map((node) =>
+                            node.id === id && node.type === "chapter"
+                              ? { ...node, emoji, modified: now() }
+                              : node,
+                          ),
+                        });
+                    }}
+                    onEdit={(node) => {
+                      setNodeEdit(node);
+                      setDialog(node.type);
+                    }}
+                    onMove={(movingId, targetId, placement) => {
+                      const current = booksRef.current.find(
+                        (candidate) => candidate.id === book.id,
+                      );
+                      if (!current) return;
+                      const moved = moveNode(
+                        current,
+                        movingId,
+                        targetId,
+                        placement,
+                      );
+                      if (moved === current) return;
+                      updateBook(moved);
+                      if (
+                        chapter &&
+                        (movingId === chapter.id ||
+                          descendants(book, movingId).some(
+                            (n) => n.id === chapter.id,
+                          ))
+                      )
+                        revealSection(chapter.id, moved);
+                    }}
+                    onImportFiles={(files, targetId, placement) =>
+                      void importFiles(files, targetId, placement)
+                    }
+                    onAddChild={(parentId) => newNode("chapter", parentId)}
+                  />
+                </OutlinePanel>
               </aside>
               <SidebarResizer controls={sidebar} />
               <main className="editor-column">
@@ -1691,6 +1768,12 @@ export default function App() {
                 "A readable book with highlighted code and a table of contents.",
               ],
               [
+                "pdf",
+                "PDF",
+                ".pdf",
+                "Formatted pages with selectable text, code, tables, and images.",
+              ],
+              [
                 "project",
                 "CodeBook project",
                 ".codebook",
@@ -1739,6 +1822,10 @@ export default function App() {
               onClick={() => {
                 void (async () => {
                   await flush();
+                  if (exportFormat === "pdf") {
+                    setDialog("pdf");
+                    return;
+                  }
                   const slug =
                     book.title.replace(/[<>:"/\\|?*\x00-\x1f]/g, "-") ||
                     "Untitled";
@@ -1763,15 +1850,27 @@ export default function App() {
                 })().catch((e) => notify(`Export failed: ${String(e)}`));
               }}
             >
-              <Download size={16} /> Export{" "}
-              {exportFormat === "project"
-                ? "project"
-                : bible
-                  ? "system bible"
-                  : "book"}
+              <Download size={16} />{" "}
+              {exportFormat === "pdf"
+                ? "Preview PDF"
+                : `Export ${exportFormat === "project" ? "project" : bible ? "system bible" : "book"}`}
             </button>
           </div>
         </Modal>
+      )}
+      {dialog === "pdf" && book && (
+        <PdfExport
+          book={book}
+          onClose={() => {
+            setDialog(null);
+            setPdfOptions(readPDFOptions());
+          }}
+          notify={notify}
+          onGeneratedCount={(count, modified, settings) => {
+            setPdfOptions(settings);
+            setPdfCount({ bookId: book.id, modified, settings, count });
+          }}
+        />
       )}
       {(dialog === "search" || dialog === "palette") && (
         <Modal

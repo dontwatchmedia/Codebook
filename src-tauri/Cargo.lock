@@ -329,7 +329,7 @@ dependencies = [
 
 [[package]]
 name = "codebook"
-version = "0.2.9"
+version = "0.2.10"
 dependencies = [
  "serde",
  "serde_json",
@@ -337,6 +337,8 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-dialog",
  "tempfile",
+ "webview2-com",
+ "windows",
 ]
 
 [[package]]

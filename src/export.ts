@@ -26,7 +26,7 @@ function sectionTitle(node: BookNode): string {
     node.type === "chapter" ? normalizeSectionEmoji(node.emoji) : null;
   return `${emoji ? emoji + " " : ""}${node.title}`;
 }
-function highlightedCode(content: string, language: string): string {
+export function highlightedCode(content: string, language: string): string {
   if (!language || !lowlight.registered(language)) return escape(content);
   const render = (node: {
     type: string;

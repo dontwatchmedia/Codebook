@@ -1,4 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+mod pdf;
 use serde_json::{json, Value};
 use std::{
     fs,
@@ -326,7 +327,7 @@ fn write_export(path: String, content: String) -> Result<(), String> {
     atomic_write(Path::new(&path), content.as_bytes())
 }
 fn main() {
-    tauri::Builder::default()
+    pdf::install(tauri::Builder::default())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let root = std::env::var_os("CODEBOOK_DATA_DIR")
@@ -346,6 +347,8 @@ fn main() {
             delete_book,
             list_backups,
             write_export,
+            pdf::generate_native_pdf,
+            pdf::write_pdf_export,
             storage_path,
             get_theme_preference,
             set_theme_preference,

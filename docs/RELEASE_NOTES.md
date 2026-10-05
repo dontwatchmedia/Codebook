@@ -1,16 +1,25 @@
-# CodeBook 0.2.9 — Smart Find and remembered reading positions
+# CodeBook 0.2.10 — Compact outline and formatted PDF export
 
-Find writing across deeply nested chapters and sections, then return to each section where you left off.
+Give the outline more room for your sections, adjust its text size independently, and export the complete project as a formatted PDF.
 
 ## Download
 
 - **[CodeBook.exe](https://github.com/dontwatchmedia/Codebook/releases/latest/download/CodeBook.exe)** — the current portable Windows executable.
-- **CodeBook-0.2.9-Windows.zip** — the same executable with a quick-start guide, README, validation notes, licenses, and SHA-256 checksum, available in the **[latest release](https://github.com/dontwatchmedia/Codebook/releases/latest)**.
+- **CodeBook-0.2.10-Windows.zip** — the same executable with a quick-start guide, README, validation notes, licenses, and SHA-256 checksum, available in the **[latest release](https://github.com/dontwatchmedia/Codebook/releases/latest)**.
 - **CodeBook.exe.sha256** — checksum for the executable.
 
 Download the EXE directly, or extract the ZIP and double-click CodeBook.exe. No Node.js, Rust, login, or development server is needed to use it. Requires 64-bit Windows 10/11 and Microsoft Edge WebView2. The executable is unsigned.
 
-## New in 0.2.9
+## New in 0.2.10
+
+- The project title sits beside **Your bookshelf**, with compact chapter and nested-section rows. **Ctrl+mouse wheel** over the left panel scales its text and emoji from **80% to 200%**, independently of writing zoom. The minus/plus controls and percentage reset are also available.
+- **Expand all sections** and **Collapse all sections** complement the individual branch arrows. **Tools** collapses the lower add/import/progress/help area. Outline zoom, collapsed branches, and the Tools choice are remembered locally.
+- Total words and an explicitly labeled live page estimate stay visible below the outline. Preparing a native PDF replaces the estimate with its exact page count; edits or changed export settings invalidate that count until a new PDF is prepared.
+- **Export → PDF** creates a formatted document with selectable text, supported typography, code, lists, tables, and images. Choose **Letter** or **A4** paper with 0.55-inch margins, optional project title, chapter/section page starts, and page numbers.
+- **Compact spacing** is checked by default for tighter Google Docs-style imported spacing. Uncheck it to retain original document spacing without changing font sizes or text formatting.
+- The PDF content preview is continuous HTML; actual page breaks are visible in the saved PDF. The browser development preview offers **Print / Save as PDF** and labels its count as estimated.
+
+## Included from 0.2.9
 
 - **Ctrl+F** or **Search** opens Smart Find. It starts in the current chapter or section, continues through the project, and wraps around. Grouped results include full ancestor paths, match counts, and snippets.
 - The open document highlights all matches and distinguishes the current match. Use **Enter** / **Shift+Enter** for next / previous, or choose a result to jump directly to its text.
@@ -101,4 +110,4 @@ The existing editor remains available: rich text, formatted paste, syntax-highli
 
 See **[VALIDATION.md](../VALIDATION.md)** for the checks performed on this build and their limits. Very large projects with thousands of sections have not been benchmarked. Progress tracking records your choices; it does not inspect a game's source or verify feature completion.
 
-This package contains only the current executable and supporting documentation. Previous executable copies and user projects are excluded. PDF, EPUB, DOCX, cloud sync, AI, and collaboration are not included in this early release.
+This package contains only the current executable and supporting documentation. Previous executable copies and user projects are excluded. EPUB, DOCX, cloud sync, AI, and collaboration are not included in this early release.

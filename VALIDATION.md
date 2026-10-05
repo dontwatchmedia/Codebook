@@ -1,4 +1,4 @@
-# CodeBook 0.2.9 validation
+# CodeBook 0.2.10 validation
 
 Validated on Windows with Node 24, Microsoft Edge, Rust 1.98.1, and the native Tauri/WebView2 runtime.
 
@@ -7,10 +7,10 @@ Validated on Windows with Node 24, Microsoft Edge, Rust 1.98.1, and the native T
 | Check                                                                      | Result           |
 | -------------------------------------------------------------------------- | ---------------- |
 | TypeScript and production Vite build                                       | Pass             |
-| Document, Markdown, clipboard, hierarchy, emoji, export, and storage tests | 185 passed       |
-| Browser workflows in Microsoft Edge                                        | 45 passed        |
-| Rust atomic replacement, path validation, recovery and preferences         | 9 passed         |
-| Native application integration                                             | 34 checks passed |
+| Document, Markdown, clipboard, hierarchy, emoji, export, and storage tests | 201 passed       |
+| Browser workflows in Microsoft Edge                                        | 52 passed        |
+| Rust atomic replacement, path validation, recovery, preferences and PDF    | 12 passed        |
+| Native application integration                                             | 41 checks passed |
 
 The permanent clipboard test uses the specification's exact Hello World structure: H2, paragraph, C++ code, paragraph with inline code, H3, numbered list. It checks language, whitespace, and inline semantics, plus Markdown export/import round trips.
 
@@ -31,6 +31,14 @@ Markdown file tests cover `.md` and `.markdown`, first-H1 and filename titles, h
 Browser import workflows select multiple files, measure their actual fonts, inspect saved documents, and compare them after reload. Files dropped into rows or before/root positions retain their batch order and become separate sections. Pointer drags exercise before/inside/after/root placement in both books and bibles to four child levels, move whole subtrees, preserve writing and metadata, and reject parent/descendant cycles. Windows sets frontend drag handling as required by the [Tauri configuration](https://v2.tauri.app/reference/config/#windowconfig), and the compiled-app workflow also tests pointer dragging and real local file drops.
 
 ## Native integration
+
+The compact outline checks use actual Ctrl+wheel input, compare rendered chapter text and emoji sizes, and confirm writing zoom and native WebView zoom remain unchanged. They exercise 80–200% bounds, reset, ordinary scrolling, the shared bookshelf/title header, 26px default rows, individual and all-branch controls, and a collapsed Tools footer with word/page totals still visible. Reopening retains zoom, Tools, and unrelated collapsed branches while revealing the last active section. Browser coverage includes 960 × 650 and compares the entire saved project before and after view changes.
+
+PDF unit and browser checks cover supported source fonts, point sizes, marks, links, images, heading levels at arbitrary outline depth, merged table cells and column proportions, code captions/filenames/line numbers, and whole-source multiline syntax highlighting. Title de-duplication retains the author, subtitle, and later same-name section labels. Compact spacing caps imported large margins, preserves intentional blank lines, tightens lists/dividers, and can be turned off without changing source typography. Settings persist, the browser print action uses an isolated script-disabled preview, and the dialog fits the minimum window size.
+
+`node scripts/native-outline-pdf-smoke.mjs CodeBook.exe` adds seven native checks: independent outline zoom; collapse/reopen and unchanged project data; real Letter PDF generation and atomic save; A4 regeneration; cache reuse and invalidation after editing; missing-image error recovery and hidden-renderer cleanup; and absence of JavaScript runtime errors. The native renderer waits for fonts and images, preserves selectable text, and runs in an unfocused hidden window with document scripts disabled. The test substitutes only the OS Save As path choice with a path inside its isolated test folder; the actual Windows PDF renderer and native binary write run normally.
+
+The final fixture produced five-page Letter and A4 PDFs and a nine-page A4 PDF after editing. Independent PDF extraction verified readable text, Arial regular/bold/italic and Consolas font resources, 11pt body and 22pt heading sizes within renderer rounding, an embedded image, an active link, and no text outside the page boundaries. All ten Letter/A4 page renders were visually inspected for pagination, page numbers, tables, code, and layout. The final renders matched the inspected images exactly. The final native reports are `test-results/native-1791167312976/`, `test-results/native-search-1791167345543/`, and `test-results/native-outline-pdf-1791167350241/`.
 
 Smart Find unit checks cover real document positions across formatting marks, hard breaks, inline objects, nested lists, tables and code, Unicode case folding without offset drift, literal non-overlapping queries, outline traversal order, and transient highlights that never enter saved content or Undo. Browser workflows exercise the first match in the current chapter, forward/backward wrapping across nested chapters, full ancestor paths and snippets, revealing collapsed parents, query and per-section occurrence retention, repeated Ctrl+F focus, the advanced-search handoff, and distant-match scrolling while Find retains keyboard focus. Replace and Replace all are limited to the current chapter or section and are checked against saved documents with Undo/Redo and reload.
 
@@ -115,12 +123,13 @@ Reviewed Smart Find at the minimum 960 × 650 browser window with a wide outline
 - A process-crash test is not a hardware power-loss test.
 - The specification's 500,000-word and thousands-of-assets performance targets were not benchmarked.
 - External clipboard applications were represented by regression fixtures; each named application was not manually tested.
-- This release does not include the roadmap's PDF, EPUB, AI, cloud, collaboration, or advanced publishing features.
+- This release does not include the roadmap's EPUB, AI, cloud, collaboration, or advanced publishing features.
 - Explorer-style file drops are exercised using WebView2’s drag protocol with real files, rather than manually automating a File Explorer gesture. Internal native chapter dragging uses pointer input.
-- The native smoke test does not drive the Windows Save As dialog; it verifies native filesystem saving and recovery. Browser workflows verify generated/downloaded exports.
+- The native smoke tests do not manually drive the Windows Save As dialog; they verify native filesystem saving, recovery, and real PDF generation/saving using an isolated selected path. Browser workflows verify generated/downloaded exports and the print handoff.
+- Page totals remain explicitly estimated until a native PDF is prepared. Actual pagination depends on paper and export settings. The HTML preview is continuous; the saved PDF shows the final page breaks. PDF fonts use installed Windows fonts; unavailable remote images report a generation error.
 
 Reproduce using the commands in `README.md`. Native reports and screenshots are written to `test-results/native-<timestamp>/` and browser screenshots to `test-results/`.
 
 ## Package audit
 
-The root, build, and release executable copies have matching SHA-256 hashes. The portable ZIP contains the current executable, quick-start guide, README, validation notes, licenses including the Unicode notice, checksum, and the thirteen screenshots referenced by the README. Its embedded executable matches the tested native build; previous executables and user projects are excluded.
+The root, build, and release executable copies have matching SHA-256 hashes. The portable ZIP contains the current executable, quick-start guide, README, validation notes, licenses including the Unicode and pdf-lib notices, checksum, and the fifteen screenshots referenced by the README. Its embedded executable matches the tested native build; previous executables and user projects are excluded.

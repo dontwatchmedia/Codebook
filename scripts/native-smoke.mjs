@@ -523,7 +523,7 @@ try {
     "background-color",
     "rgb(24, 37, 59)",
   );
-  await page.locator(".structure-book .project-title-button").dblclick();
+  await page.locator(".outline-panel-title .project-title-button").dblclick();
   await page
     .getByLabel("Rename project", { exact: true })
     .fill("Native compact workspace");

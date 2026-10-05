@@ -2889,3 +2889,15 @@ button.active {
   color: #211500 !important;
   box-shadow: 0 0 0 1px #a96300;
 }
+.outline-book-totals {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 8px;
+}
+.outline-page-count {
+  color: var(--accent);
+  padding: 2px 0;
+  font-size: inherit;
+  text-align: left;
+}

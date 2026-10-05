@@ -2,7 +2,7 @@
 
 **An offline writing app for technical books, game design documents, and system bibles.**
 
-CodeBook is a free, open-source **technical book writing app and system bible editor for Windows**. Organize chapters or deeply nested systems, write in a rich-text editor, paste formatted content from ChatGPT or the web, and edit code examples with syntax highlighting. Track each section with a topic icon and progress status. Export your manuscript or game design document to Markdown or HTML when you are ready to share it.
+CodeBook is a free, open-source **technical book writing app and system bible editor for Windows**. Organize chapters or deeply nested systems, write in a rich-text editor, paste formatted content from ChatGPT or the web, and edit code examples with syntax highlighting. Track each section with a topic icon and progress status. Export your manuscript or game design document to formatted PDF, Markdown, or HTML when you are ready to share it.
 
 Built for programming-book authors, technical writers, game designers, educators, developers, and tutorial creators. No account or internet connection is required for the core writing workflow.
 
@@ -16,11 +16,11 @@ Writing a programming book or game system bible means moving between prose, code
 
 - **Write like an author.** Work with books, parts, and chapters through a familiar visual editor.
 - **Organize a living design.** Build a system bible with nested sections, topic icons, and visible progress states.
-- **Make the space yours.** Resize the left panel, use a compact writing layout, choose from eight color themes, rename titles with a double-click, and search 3,773 section emoji beside their numbers.
+- **Make the space yours.** Resize the left panel, zoom its text with Ctrl+wheel, hide its lower tools, use compact writing, choose from eight color themes, and search 3,773 section emoji.
 - **Treat code as content.** Give code blocks a language, filename, and optional line numbers.
 - **Keep pasted structure.** Preserve headings, lists, links, tables, inline code, and fenced code blocks from supported rich text and Markdown.
 - **Keep your work local.** Save structured project files on your computer, with autosave, recovery journals, and backup snapshots.
-- **Take your manuscript with you.** Export readable HTML, portable Markdown, or a complete `.codebook` project.
+- **Take your manuscript with you.** Export a formatted PDF, readable HTML, portable Markdown, or a complete `.codebook` project.
 
 ## Download and start writing
 
@@ -39,6 +39,8 @@ The latest executable is also available directly in the [repository root](CodeBo
 
 - A bookshelf for creating, opening, renaming, and managing books and system bibles.
 - Drag the left panel's right edge to make the outline wider or narrower. CodeBook remembers your chosen width after restarting. Double-click the divider to reset it; when focused, use Left/Right arrows to resize, Shift for larger steps, and Home/End for the available limits.
+- A compact header places the project title beside **Your bookshelf**, with tighter rows for chapters and nested sections. Hold **Ctrl** and use the mouse wheel over the left panel to change outline text and emoji from **80% to 200%**, independently of writing zoom. The **− / percentage / +** controls offer the same adjustment; clicking the percentage resets to 100%.
+- Use **Expand all sections** / **Collapse all sections**, or individual branch arrows. **Tools** collapses the lower add/import/progress/help area. Zoom, footer choice, and collapsed branches are remembered locally. Total words and the page counter stay visible when the tools are hidden.
 - Double-click a project title in the left sidebar, or a chapter, section, or part title in the outline, to rename it. Enter saves, Escape cancels, and clicking away saves a valid name. F2 also starts renaming.
 - Choose from **3,773 offline emoji** beside each chapter number or section icon, including flags, skin tones, and joined emoji. Familiar progress and topic symbols remain first.
 - Search emoji names, keywords, partial words, or a pasted emoji. Try **done**, **wip**, **dragon**, **farming**, or **dark skin scientist**. Searches ignore capitalization and accents, and match all the words you enter.
@@ -50,6 +52,8 @@ The latest executable is also available directly in the [repository root](CodeBo
 - Book metadata, author name, subtitle, cover color, and word goals.
 
 ![CodeBook White theme with a wider left outline panel and nested chapters](docs/images/resizable-outline.png)
+
+![CodeBook compact outline with its title beside the bookshelf link, text zoom controls, and always-visible word and page totals](docs/images/compact-outline.png)
 
 ![CodeBook searchable offline emoji picker with categories and keyword results](docs/images/emoji-search.png)
 
@@ -146,10 +150,21 @@ If an earlier paste became entirely bold or lost its font, update CodeBook and p
 - Atomic file replacement and a separate recovery journal.
 - Up to 30 automatic backup snapshots per project, with a restore interface.
 - Markdown export for portability and HTML export with highlighted code and a table of contents.
+- Formatted PDF export with selectable text, supported typography, code, lists, tables, and images.
 - Complete `.codebook` project export, including nested sections, icons, progress, notes, and code metadata.
 - Import Markdown, HTML, and plain-text files as new chapters or sections; import a `.codebook` file as an independent project.
 
 ![CodeBook bookshelf in dark mode showing a technical book and the New Book action](docs/images/dark-bookshelf.png)
+
+### Export a formatted PDF
+
+Choose **Export → PDF → Preview PDF**, or click the page counter below the outline. Select **Letter** or **A4** paper with 0.55-inch margins, and choose whether to include the project title, start each chapter or section on a new page, and show page numbers. In the Windows app, wait for preparation and click **Save PDF**.
+
+**Compact spacing** is checked by default to keep the tighter Google Docs-style spacing around imported paragraphs, headings, and dividers. Uncheck it to retain the document's original spacing. Font sizes and text formatting stay intact in either mode.
+
+The outline shows a live **estimated** page count while you write. Preparing the native PDF supplies the **exact** count for that document and those settings. Editing the project or changing settings invalidates that exact count until another PDF is prepared. The in-app content preview is continuous HTML; view the saved PDF for its actual page breaks. The browser development preview uses **Print / Save as PDF** and keeps its page count labeled as an estimate.
+
+![CodeBook PDF export with Letter and A4 paper options, chapter page breaks, page numbers, and a white-paper content preview](docs/images/pdf-export.png)
 
 ## Your files stay on your computer
 
@@ -179,15 +194,16 @@ Locally inserted image files are embedded in the project. Images pasted as remot
 | Command palette           | `Ctrl+Shift+P`                           |
 | Save now                  | `Ctrl+S`                                 |
 | Leave focus mode          | `Esc`                                    |
+| Outline text zoom         | `Ctrl+mouse wheel` over the left panel    |
 | Insert a block            | Type `/` at the beginning of a paragraph |
 
 ## Current release and roadmap
 
-CodeBook **0.2.9** adds **Smart Find** with highlighted matches, nested section paths, and navigation across the project, plus remembered reading positions and the last visited section. It includes Format Markdown, a resizable outline, multiple Markdown-file import with Google Docs-style typography, direct dragging into deeper sections, 3,773 searchable offline emoji, writing zoom, eight color themes, double-click title renaming, and nested system bibles.
+CodeBook **0.2.10** adds a compact, zoomable outline with collapsible tools, branch controls, visible word/page totals, and formatted PDF export. It includes Smart Find, remembered reading positions, Format Markdown, a resizable outline, multiple Markdown-file import with Google Docs-style typography, nested drag-and-drop, 3,773 searchable offline emoji, writing zoom, eight color themes, and double-click title renaming.
 
-**Available now:** deeply nested sections, topic icons, section progress, rich-text editing, code highlighting, formatted paste, dark mode, local autosave and recovery, book organization, search, and Markdown/HTML export.
+**Available now:** deeply nested sections, topic icons, section progress, rich-text editing, code highlighting, formatted paste, dark mode, local autosave and recovery, book organization, search, and PDF/Markdown/HTML export.
 
-**Not included yet:** PDF, EPUB, DOCX, AI writing tools, cloud synchronization, collaboration, comments, equations, diagrams, cross-references, and advanced publishing layouts. These are possible future features, not current capabilities or promised release dates.
+**Not included yet:** EPUB, DOCX, AI writing tools, cloud synchronization, collaboration, comments, equations, diagrams, cross-references, and advanced publishing layouts. These are possible future features, not current capabilities or promised release dates.
 
 Markdown preserves supported writing blocks and a system bible's numbered hierarchy. Use `.codebook` for an exact project backup, including organization and metadata. Very large projects with thousands of sections, hundreds of thousands of words, or thousands of images have not been benchmarked.
 
@@ -225,6 +241,7 @@ npm.cmd run test:e2e
 powershell -ExecutionPolicy Bypass -File scripts/desktop.ps1 test
 node scripts/native-smoke.mjs CodeBook.exe
 node scripts/native-search-smoke.mjs CodeBook.exe
+node scripts/native-outline-pdf-smoke.mjs CodeBook.exe
 ```
 
 Browser workflows use Microsoft Edge. The native smoke test uses an isolated project directory and checks filesystem saving, restart persistence, dark-mode persistence, and recovery after forced termination.

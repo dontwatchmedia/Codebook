@@ -1,4 +1,4 @@
-CODEBOOK 0.2.9 — BOOKS AND SYSTEM BIBLES
+CODEBOOK 0.2.10 — BOOKS AND SYSTEM BIBLES
 
 Extract the ZIP, then double-click CodeBook.exe.
 
@@ -9,6 +9,14 @@ Open the Learning C++ sample, choose New book, or choose New system bible.
 Drag the left panel's right edge to make the outline wider or narrower.
 The width is remembered after restarting. Double-click the divider to reset.
 You can also focus it and press Left/Right, Shift for bigger steps, or Home/End.
+The project title now sits beside Your bookshelf above compact outline rows.
+Hold Ctrl and use the mouse wheel over the left panel to change its text
+and emoji sizes from 80% to 200%, without changing the writing zoom.
+The minus/plus controls also resize outline text; click the percentage to reset.
+Expand all sections and Collapse all sections control all nested branches.
+Click Tools to hide or show the lower add/import/progress/help area.
+Outline zoom, the Tools choice, and collapsed branches are remembered locally.
+Total words and a page counter remain visible even when Tools is collapsed.
 Compact writing is the default: less padding, tighter gaps, more room for text.
 Use the Compact / Original spacing choice above the editor to switch views.
 This changes the display; your saved typography and exports remain intact.
@@ -77,7 +85,20 @@ library. Use Export > CodeBook project to back up or transfer a complete
 project, including its hierarchy, icons, progress, notes, and images.
 Markdown and HTML exports preserve a system bible's nested organization.
 
-PDF, EPUB, DOCX, AI, sync, and collaboration are not included. See README.md
+Choose Export > PDF > Preview PDF, or click the outline's page counter,
+for formatted PDF output with selectable text, code, tables, and images.
+Choose Letter or A4 paper with 0.55-inch margins. Options include the project
+title, starting each chapter/section on a new page, and page numbers.
+Compact spacing is checked by default for the tighter Google Docs-style gaps.
+Uncheck it to retain original document spacing; font sizes and formatting remain.
+In the Windows app, wait for preparation and choose Save PDF.
+The live outline page count is labeled as an estimate until a native PDF is
+prepared. That prepared PDF supplies an exact count for its content and settings.
+Editing the project or changing settings invalidates the exact count.
+The content preview is continuous HTML: check the saved PDF for actual page breaks.
+In the browser preview, use Print / Save as PDF; its page total is an estimate.
+
+EPUB, DOCX, AI, sync, and collaboration are not included. See README.md
 for the feature list and limitations, and VALIDATION.md for testing evidence.
 
 The executable is unsigned.

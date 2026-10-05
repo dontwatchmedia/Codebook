@@ -1,6 +1,6 @@
 {
   "name": "codebook",
-  "version": "0.2.9",
+  "version": "0.2.10",
   "description": "Offline technical book writing software with rich text, syntax-highlighted code, formatted paste, and Markdown/HTML export.",
   "license": "MIT",
   "repository": {
@@ -34,6 +34,7 @@
     "lowlight": "^3.3.0",
     "lucide-react": "^0.577.0",
     "marked": "^17.0.0",
+    "pdf-lib": "1.17.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

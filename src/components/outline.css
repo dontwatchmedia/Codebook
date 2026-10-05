@@ -480,3 +480,202 @@
     padding: 10px 12px;
   }
 }
+
+/* Keep the outline useful on small screens; its scale is independent of paper. */
+.outline-panel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  --outline-scale: 1;
+}
+.outline-panel-header {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 10px;
+  min-height: 43px;
+  padding: 7px 0;
+}
+.outline-panel .back-library {
+  align-self: center;
+  flex-shrink: 0;
+  margin: 0;
+  gap: 4px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+.outline-panel-title {
+  flex: 1;
+  min-width: 0;
+  color: var(--ink);
+  font-size: calc(12px * var(--outline-scale));
+  font-weight: 600;
+  line-height: 1.3;
+}
+.outline-panel-title h2 {
+  margin: 0;
+  font: inherit;
+}
+.outline-panel-title .project-title-button {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+}
+.outline-panel-title .project-rename {
+  margin: 0;
+  padding: 4px;
+  font-size: inherit;
+}
+.outline-panel-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 3px;
+  padding-bottom: 6px;
+}
+.outline-panel-label {
+  flex: 1;
+  min-width: 60px;
+  color: var(--muted);
+  font-size: 8px;
+  letter-spacing: 0.6px;
+}
+.outline-branch-tools,
+.outline-zoom-tools {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  color: var(--muted);
+}
+.outline-zoom-tools {
+  margin-left: auto;
+}
+.outline-panel-tools button {
+  width: 22px;
+  height: 24px;
+  padding: 3px;
+}
+.outline-panel-tools .outline-zoom-reset {
+  width: 39px;
+  font-size: 10px;
+  color: var(--ink);
+}
+.outline-panel .outline-tree {
+  min-height: 60px;
+  padding-bottom: 6px;
+}
+.outline-panel .outline-row {
+  min-height: calc(26px * var(--outline-scale));
+  margin: 1px 0;
+}
+.outline-panel .outline-tree .chapter-row,
+.outline-panel .outline-tree .chapter-row.nested {
+  min-height: calc(26px * var(--outline-scale));
+  padding: 3px 2px;
+  gap: calc(5px * var(--outline-scale));
+  font-size: calc(12px * var(--outline-scale));
+  line-height: 1.3;
+}
+.outline-panel .outline-tree .chapter-number {
+  font-size: calc(9px * var(--outline-scale));
+  width: calc(20px * var(--outline-scale));
+}
+.outline-panel .outline-tree .section-topic {
+  flex-basis: calc(17px * var(--outline-scale));
+}
+.outline-panel .outline-tree .chapter-status-dot {
+  width: calc(5px * var(--outline-scale));
+  height: calc(5px * var(--outline-scale));
+}
+.outline-panel .outline-disclosure,
+.outline-panel .outline-disclosure-spacer {
+  width: calc(15px * var(--outline-scale));
+  flex-basis: calc(15px * var(--outline-scale));
+  padding: 3px 0;
+}
+.outline-panel .outline-emoji-trigger {
+  width: calc(20px * var(--outline-scale));
+  flex-basis: calc(20px * var(--outline-scale));
+  height: calc(23px * var(--outline-scale));
+  font-size: calc(15px * var(--outline-scale));
+}
+.outline-panel .outline-tree .outline-part {
+  margin: 5px 0 1px;
+}
+.outline-panel .outline-tree .part-name {
+  padding: 3px 1px;
+  font-size: calc(10px * var(--outline-scale));
+}
+.outline-panel .outline-disclosure svg,
+.outline-panel .outline-tree .chapter-row svg,
+.outline-panel .outline-tree .part-name svg {
+  width: calc(13px * var(--outline-scale));
+  height: calc(13px * var(--outline-scale));
+}
+.outline-panel .outline-root-drop {
+  margin-top: 6px;
+  padding: 6px;
+  font-size: calc(10px * var(--outline-scale));
+}
+.outline-footer-summary {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  min-height: 35px;
+  border-top: 1px solid var(--line);
+}
+.outline-footer-stats {
+  flex: 1;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+.outline-footer-toggle {
+  flex-shrink: 0;
+  padding: 5px 3px;
+  gap: 2px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.outline-footer-content {
+  flex-shrink: 0;
+  max-height: 42vh;
+  overflow: auto;
+}
+.outline-footer-content[hidden] {
+  display: none;
+}
+.outline-panel .structure-add {
+  padding: 5px 0;
+  gap: 0;
+  border-top: 0;
+}
+.outline-panel .structure-add button {
+  padding: 5px 4px;
+  gap: 7px;
+}
+.outline-panel .book-progress {
+  padding: 8px 4px;
+}
+.outline-panel .book-progress p {
+  margin: 5px 0;
+}
+.outline-panel .book-progress strong {
+  font-family: inherit;
+  font-size: 15px;
+}
+.outline-panel .book-progress small {
+  margin-top: 4px;
+}
+.outline-panel .structure-help {
+  width: 100%;
+  margin: 0;
+  padding: 7px 4px;
+}

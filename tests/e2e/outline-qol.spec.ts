@@ -90,12 +90,12 @@ test("outline titles rename in place with Enter, Escape, blur, and F2", async ({
   await expect(
     page.locator(".part-name").filter({ hasText: "Foundations" }),
   ).toBeVisible();
-  await page.locator(".structure-book h2").dblclick();
+  await page.locator(".project-title-button").dblclick();
   await page
     .getByRole("textbox", { name: "Rename project", exact: true })
     .fill("Learning C++ revised");
   await page.keyboard.press("Enter");
-  await expect(page.locator(".structure-book h2")).toHaveText(
+  await expect(page.locator(".project-title-button")).toHaveText(
     "Learning C++ revised",
   );
   await expect(

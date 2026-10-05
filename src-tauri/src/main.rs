@@ -188,6 +188,32 @@ fn set_writing_zoom(zoom: u16, s: tauri::State<Storage>) -> Result<(), String> {
     let _guard = s.lock.lock().map_err(|e| e.to_string())?;
     write_writing_zoom(&s.root, zoom)
 }
+fn valid_sidebar_width(width: u16) -> bool {
+    (180..=640).contains(&width)
+}
+fn read_sidebar_width(root: &Path) -> Option<u16> {
+    let data = read_preferences(root).ok()?;
+    data["sidebarWidth"]
+        .as_u64()
+        .and_then(|width| u16::try_from(width).ok())
+        .filter(|width| valid_sidebar_width(*width))
+}
+fn write_sidebar_width(root: &Path, width: Option<u16>) -> Result<(), String> {
+    if width.is_some_and(|width| !valid_sidebar_width(width)) {
+        return Err("Sidebar width must be an integer from 180 to 640, or null".into());
+    }
+    write_preference(root, "sidebarWidth", json!(width))
+}
+#[tauri::command]
+fn get_sidebar_width(s: tauri::State<Storage>) -> Result<Option<u16>, String> {
+    let _guard = s.lock.lock().map_err(|e| e.to_string())?;
+    Ok(read_sidebar_width(&s.root))
+}
+#[tauri::command]
+fn set_sidebar_width(width: Option<u16>, s: tauri::State<Storage>) -> Result<(), String> {
+    let _guard = s.lock.lock().map_err(|e| e.to_string())?;
+    write_sidebar_width(&s.root, width)
+}
 #[tauri::command]
 fn load_library(s: tauri::State<Storage>) -> Result<Value, String> {
     let _guard = s.lock.lock().map_err(|e| e.to_string())?;
@@ -326,7 +352,9 @@ fn main() {
             get_layout_preference,
             set_layout_preference,
             get_writing_zoom,
-            set_writing_zoom
+            set_writing_zoom,
+            get_sidebar_width,
+            set_sidebar_width
         ])
         .run(tauri::generate_context!())
         .expect("Unable to start CodeBook");
@@ -411,6 +439,67 @@ mod tests {
             atomic_write(&path, corrupt).unwrap();
             assert_eq!(read_writing_zoom(dir.path()), 100);
             assert!(write_writing_zoom(dir.path(), 80).is_err());
+            assert_eq!(fs::read(&path).unwrap(), corrupt);
+        }
+    }
+    #[test]
+    fn sidebar_width_updates_and_reset_preserve_other_preferences() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(".preferences.json");
+        atomic_write(
+            &path,
+            br#"{"theme":"white","layout":"compact","writingZoom":80,"future":{"keep":true}}"#,
+        )
+        .unwrap();
+        for width in [180, 320, 640] {
+            write_sidebar_width(dir.path(), Some(width)).unwrap();
+            assert_eq!(read_sidebar_width(dir.path()), Some(width));
+        }
+        let before = fs::read(&path).unwrap();
+        for invalid in [0, 179, 641, u16::MAX] {
+            assert!(write_sidebar_width(dir.path(), Some(invalid)).is_err());
+            assert_eq!(fs::read(&path).unwrap(), before);
+        }
+        write_sidebar_width(dir.path(), None).unwrap();
+        assert_eq!(read_sidebar_width(dir.path()), None);
+        let saved = read_preferences(dir.path()).unwrap();
+        assert_eq!(saved["sidebarWidth"], Value::Null);
+        assert_eq!(saved["theme"], "white");
+        assert_eq!(saved["layout"], "compact");
+        assert_eq!(saved["writingZoom"], 80);
+        assert_eq!(saved["future"]["keep"], true);
+        write_preference(dir.path(), "theme", json!("midnight")).unwrap();
+        write_sidebar_width(dir.path(), Some(420)).unwrap();
+        assert_eq!(read_preferences(dir.path()).unwrap()["theme"], "midnight");
+        assert_eq!(read_sidebar_width(dir.path()), Some(420));
+    }
+    #[test]
+    fn missing_or_invalid_sidebar_width_uses_responsive_default() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(".preferences.json");
+        assert_eq!(read_sidebar_width(dir.path()), None);
+        for invalid in [
+            Value::Null,
+            json!(179),
+            json!(641),
+            json!(-1),
+            json!(320.5),
+            json!("320"),
+            json!(true),
+            json!(65536),
+        ] {
+            atomic_write(
+                &path,
+                &serde_json::to_vec(&json!({"sidebarWidth": invalid})).unwrap(),
+            )
+            .unwrap();
+            assert_eq!(read_sidebar_width(dir.path()), None);
+        }
+        for corrupt in [b"not json".as_slice(), b"[]".as_slice()] {
+            atomic_write(&path, corrupt).unwrap();
+            assert_eq!(read_sidebar_width(dir.path()), None);
+            assert!(write_sidebar_width(dir.path(), Some(320)).is_err());
+            assert!(write_sidebar_width(dir.path(), None).is_err());
             assert_eq!(fs::read(&path).unwrap(), corrupt);
         }
     }

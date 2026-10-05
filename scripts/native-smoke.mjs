@@ -735,13 +735,11 @@ try {
     .setInputFiles(importedPaths);
   const importedTitles = ["Imported systems", "Mechanics", "Behavior"];
   const importRow = (title) =>
-    page
-      .locator(".chapter-row")
-      .filter({
-        has: page
-          .locator(".outline-title")
-          .filter({ hasText: new RegExp(`^${title}$`) }),
-      });
+    page.locator(".chapter-row").filter({
+      has: page
+        .locator(".outline-title")
+        .filter({ hasText: new RegExp(`^${title}$`) }),
+    });
   await expect(importRow("Behavior")).toBeVisible();
   await importRow("Imported systems").click();
   const importedEditor = page.getByRole("textbox", {
@@ -887,6 +885,88 @@ try {
   }
   evidence.checks.push(
     "Imported Markdown, native file-drop content and the complete reparented chapter hierarchy survived native process termination and restart",
+  );
+  const leftPanel = () => page.locator(".structure");
+  const resizeDivider = () =>
+    page.getByRole("separator", { name: "Resize left panel", exact: true });
+  const panelWidth = async () =>
+    Math.round((await leftPanel().boundingBox()).width);
+  const readNativePreferences = async () =>
+    JSON.parse(
+      await readFile(path.join(booksDir, ".preferences.json"), "utf8"),
+    );
+  const initialPanelWidth = await panelWidth();
+  const dividerBounds = await resizeDivider().boundingBox();
+  await page.mouse.move(
+    dividerBounds.x + dividerBounds.width / 2,
+    dividerBounds.y + dividerBounds.height / 2,
+  );
+  await page.mouse.down();
+  await page.mouse.move(
+    dividerBounds.x + dividerBounds.width / 2 + 140,
+    dividerBounds.y + dividerBounds.height / 2,
+    { steps: 12 },
+  );
+  await page.mouse.up();
+  await expect.poll(panelWidth).toBe(initialPanelWidth + 140);
+  const expandedPanelWidth = await panelWidth();
+  await page.mouse.move(expandedPanelWidth + 80, 200);
+  await page.screenshot({
+    path: path.join(root, "native-resizable-outline.png"),
+  });
+  await resizeDivider().focus();
+  await page.keyboard.press("ArrowLeft");
+  await expect.poll(panelWidth).toBe(expandedPanelWidth - 10);
+  const chosenPanelWidth = await panelWidth();
+  await expect
+    .poll(async () => (await readNativePreferences()).sidebarWidth)
+    .toBe(chosenPanelWidth);
+  expect(await readNativePreferences()).toMatchObject({
+    theme: "white",
+    layout: "compact",
+    writingZoom: 80,
+  });
+  const chapterContents = (project) =>
+    project.nodes.map(({ modified, ...node }) => node);
+  expect(
+    chapterContents((await projectByTitle("Native compact workspace")).project),
+  ).toEqual(chapterContents(reopenedImports));
+  evidence.checks.push(
+    "Real pointer dragging widened the native left panel, keyboard input narrowed it, and atomic native preferences retained width, theme, layout and zoom without changing chapter writing or hierarchy",
+  );
+  await page
+    .getByRole("button", { name: "Saved on this device", exact: true })
+    .waitFor();
+  await expect
+    .poll(async () => readdir(path.join(booksDir, "recovery")))
+    .toEqual([]);
+  await kill();
+  await launch();
+  await page
+    .getByRole("button", { name: "Open Native compact workspace", exact: true })
+    .click();
+  await expect.poll(panelWidth).toBe(chosenPanelWidth);
+  await page.getByRole("button", { name: "Focus mode", exact: true }).click();
+  await expect(leftPanel()).toBeHidden();
+  await expect(resizeDivider()).toBeHidden();
+  await page.keyboard.press("Escape");
+  await expect(resizeDivider()).toBeVisible();
+  await expect.poll(panelWidth).toBe(chosenPanelWidth);
+  evidence.checks.push(
+    "The chosen left-panel width survived native process restart, and Focus mode hid and restored both the panel and its divider",
+  );
+  await resizeDivider().dblclick();
+  await expect.poll(panelWidth).toBe(initialPanelWidth);
+  await expect
+    .poll(async () => (await readNativePreferences()).sidebarWidth)
+    .toBeNull();
+  expect(await readNativePreferences()).toMatchObject({
+    theme: "white",
+    layout: "compact",
+    writingZoom: 80,
+  });
+  evidence.checks.push(
+    "Double-clicking the native divider restored the responsive default and persisted the reset without discarding other preferences",
   );
   expect(evidence.errors).toEqual([]);
   evidence.checks.push("No JavaScript runtime errors during native workflow");

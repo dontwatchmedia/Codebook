@@ -16,7 +16,7 @@ Writing a programming book or game system bible means moving between prose, code
 
 - **Write like an author.** Work with books, parts, and chapters through a familiar visual editor.
 - **Organize a living design.** Build a system bible with nested sections, topic icons, and visible progress states.
-- **Make the space yours.** Use a compact writing layout, choose from eight color themes, rename titles with a double-click, and search 3,773 section emoji beside their numbers.
+- **Make the space yours.** Resize the left panel, use a compact writing layout, choose from eight color themes, rename titles with a double-click, and search 3,773 section emoji beside their numbers.
 - **Treat code as content.** Give code blocks a language, filename, and optional line numbers.
 - **Keep pasted structure.** Preserve headings, lists, links, tables, inline code, and fenced code blocks from supported rich text and Markdown.
 - **Keep your work local.** Save structured project files on your computer, with autosave, recovery journals, and backup snapshots.
@@ -38,6 +38,7 @@ The latest executable is also available directly in the [repository root](CodeBo
 ### Book and chapter organization
 
 - A bookshelf for creating, opening, renaming, and managing books and system bibles.
+- Drag the left panel's right edge to make the outline wider or narrower. CodeBook remembers your chosen width after restarting. Double-click the divider to reset it; when focused, use Left/Right arrows to resize, Shift for larger steps, and Home/End for the available limits.
 - Double-click a project title in the left sidebar, or a chapter, section, or part title in the outline, to rename it. Enter saves, Escape cancels, and clicking away saves a valid name. F2 also starts renaming.
 - Choose from **3,773 offline emoji** beside each chapter number or section icon, including flags, skin tones, and joined emoji. Familiar progress and topic symbols remain first.
 - Search emoji names, keywords, partial words, or a pasted emoji. Try **done**, **wip**, **dragon**, **farming**, or **dark skin scientist**. Searches ignore capitalization and accents, and match all the words you enter.
@@ -47,6 +48,8 @@ The latest executable is also available directly in the [repository root](CodeBo
 - Drop a branch on **Move to top level** to promote it. The outline shows insertion lines or an inside highlight, and blocks drops that would put a parent inside its own descendant.
 - Automatic chapter numbering and keyboard-accessible move actions.
 - Book metadata, author name, subtitle, cover color, and word goals.
+
+![CodeBook White theme with a wider left outline panel and nested chapters](docs/images/resizable-outline.png)
 
 ![CodeBook searchable offline emoji picker with categories and keyword results](docs/images/emoji-search.png)
 
@@ -166,7 +169,7 @@ Locally inserted image files are embedded in the project. Images pasted as remot
 
 ## Current release and roadmap
 
-CodeBook **0.2.6** adds multiple Markdown-file import with Google Docs-style typography and direct dragging into chapters, subchapters, and deeper sections. It includes 3,773 searchable offline emoji, writing zoom, eight color themes, double-click title renaming, Google Docs formatting retention, and nested system bibles. Organize an overview into systems and features, mark progress, import technical content, edit code, save, reopen, and export.
+CodeBook **0.2.7** adds a resizable left outline panel with a remembered width. It includes multiple Markdown-file import with Google Docs-style typography, direct dragging into deeper sections, 3,773 searchable offline emoji, writing zoom, eight color themes, double-click title renaming, and nested system bibles. Organize an overview into systems and features, mark progress, import technical content, edit code, save, reopen, and export.
 
 **Available now:** deeply nested sections, topic icons, section progress, rich-text editing, code highlighting, formatted paste, dark mode, local autosave and recovery, book organization, search, and Markdown/HTML export.
 

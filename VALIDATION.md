@@ -1,4 +1,4 @@
-# CodeBook 0.2.6 validation
+# CodeBook 0.2.7 validation
 
 Validated on Windows with Node 24, Microsoft Edge, Rust 1.98.1, and the native Tauri/WebView2 runtime.
 
@@ -7,10 +7,10 @@ Validated on Windows with Node 24, Microsoft Edge, Rust 1.98.1, and the native T
 | Check                                                                      | Result           |
 | -------------------------------------------------------------------------- | ---------------- |
 | TypeScript and production Vite build                                       | Pass             |
-| Document, Markdown, clipboard, hierarchy, emoji, export, and storage tests | 146 passed       |
-| Browser workflows in Microsoft Edge                                        | 29 passed        |
-| Rust atomic replacement, path validation, recovery and preferences         | 7 passed         |
-| Native application integration                                             | 22 checks passed |
+| Document, Markdown, clipboard, hierarchy, emoji, export, and storage tests | 154 passed       |
+| Browser workflows in Microsoft Edge                                        | 33 passed        |
+| Rust atomic replacement, path validation, recovery and preferences         | 9 passed         |
+| Native application integration                                             | 25 checks passed |
 
 The permanent clipboard test uses the specification's exact Hello World structure: H2, paragraph, C++ code, paragraph with inline code, H3, numbered list. It checks language, whitespace, and inline semantics, plus Markdown export/import round trips.
 
@@ -31,6 +31,8 @@ Markdown file tests cover `.md` and `.markdown`, first-H1 and filename titles, h
 Browser import workflows select multiple files, measure their actual fonts, inspect saved documents, and compare them after reload. Files dropped into rows or before/root positions retain their batch order and become separate sections. Pointer drags exercise before/inside/after/root placement in both books and bibles to four child levels, move whole subtrees, preserve writing and metadata, and reject parent/descendant cycles. Windows sets frontend drag handling as required by the [Tauri configuration](https://v2.tauri.app/reference/config/#windowconfig), and the compiled-app workflow also tests pointer dragging and real local file drops.
 
 ## Native integration
+
+Sidebar workflows use real pointer drags to widen and narrow the left panel, confirm longer titles gain room, and compare saved chapter content and hierarchy before and after resizing and reload. Keyboard checks cover arrows, larger Shift steps, Home/End limits, and double-click reset. Escape, window blur, and unexpected pointer capture loss cancel an in-progress drag. A 960 × 650 window retains at least 360px for writing while accounting for the inspector; the original chosen width returns when more room is available. Books and system bibles share the preference, and Focus mode hides and restores the panel and divider. Preference tests cover serialized native writes, reset, valid ranges, corrupt data, storage failures, and preserving theme/layout/zoom.
 
 The compact-layout browser workflow compares rendered editor width, vertical gaps, and the first content position with Original spacing. It verifies the capped display margins retain their original values in saved document data. A divider workflow reproduces the blank-paragraph/divider/blank-paragraph/heading structure, measures tight gaps at 80%, confirms original spacing and source fonts remain stored, and exercises mouse editing in both neighboring blank paragraphs. Outline workflows exercise title renaming with double-click, Enter, Escape, blur, empty rejection and F2, plus curated/custom emoji, clearing, persistence and nested section navigation. The eight-theme workflow checks palettes, color scheme, shelf/editor/preferences synchronization, code colors and reload. White checks cover pure white paper, neutral panels, blue controls/selection, notes, callouts, and preference persistence. Unit checks include single-emoji Unicode sequences, invalid input, project saves/recovery/backups and defensive exports; Rust checks cover preference merging and preserving corrupt preference files.
 
@@ -59,7 +61,10 @@ Writing-zoom workflows compare actual rendered text ranges at 100% and 80% for 1
 19. Uses real pointer dragging to build a nested three-section branch and move it under another chapter, preserving every imported document.
 20. Dispatches a file-path drag through the compiled WebView to read a real local Markdown file and add it below a subchapter; inspects its stored parent and text.
 21. Terminates and reopens the app, then compares imported documents and their complete nested hierarchy with the saved files.
-22. Checks for JavaScript runtime errors throughout the workflow.
+22. Uses actual pointer dragging and keyboard input to widen and narrow the outline, checks its width in the native preference file alongside theme/layout/zoom, and compares chapter writing and hierarchy.
+23. Restarts the process to verify the chosen width, then enters and leaves Focus mode to check the panel and divider.
+24. Double-clicks the divider to restore the responsive default and checks the persisted reset and other preferences.
+25. Checks for JavaScript runtime errors throughout the workflow.
 
 The first native crash test exposed WebView2's delayed browser-storage persistence. The implementation was corrected to write an immediate, flushed, atomic recovery file through Rust. The repeated test passed with that change. Recovery cleanup compares revision timestamps so an older completed save cannot delete a newer pending edit.
 
@@ -77,6 +82,8 @@ Inspected screenshots of the bookshelf and editor in Edge at 1440 × 1000, and t
 
 Reviewed the Markdown import screenshot in White: regular Arial prose, bold/italic runs, lists, table, divider, syntax-highlighted C++ and link are readable with compact spacing. Also reviewed the native Windows file-drop result at 80% zoom, with its nested outline, full breadcrumb, editable parent choice and retained source font.
 
+Reviewed the Windows White editor with the widened left panel: nested chapter titles use the additional room, the divider adds no blank strip, and the editor and inspector remain usable.
+
 ## Limits of these results
 
 - A process-crash test is not a hardware power-loss test.
@@ -90,4 +97,4 @@ Reproduce using the commands in `README.md`. Native reports and screenshots are 
 
 ## Package audit
 
-The root, build, and release executable copies have matching SHA-256 hashes. The portable ZIP contains the current executable, quick-start guide, README, validation notes, licenses including the Unicode notice, checksum, and the ten screenshots referenced by the README. Its embedded executable matches the tested native build; previous executables and user projects are excluded.
+The root, build, and release executable copies have matching SHA-256 hashes. The portable ZIP contains the current executable, quick-start guide, README, validation notes, licenses including the Unicode notice, checksum, and the eleven screenshots referenced by the README. Its embedded executable matches the tested native build; previous executables and user projects are excluded.

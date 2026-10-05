@@ -717,6 +717,35 @@ button.active {
   flex-direction: column;
   padding: 0 15px;
 }
+.sidebar-resizer {
+  position: relative;
+  z-index: 4;
+  flex: 0 0 8px;
+  width: 8px;
+  align-self: stretch;
+  margin-left: -4px;
+  margin-right: -4px;
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+  outline: none;
+}
+.sidebar-resizer::after {
+  content: "";
+  position: absolute;
+  inset: 0 3px;
+  background: transparent;
+}
+.sidebar-resizer:hover::after,
+.sidebar-resizer:focus-visible::after,
+.sidebar-resizer.is-resizing::after {
+  background: var(--accent);
+}
+.resizing-sidebar,
+.resizing-sidebar * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
 .back-library {
   align-self: flex-start;
   font-size: 10px;
@@ -1243,6 +1272,7 @@ button.active {
   color: #929d87;
 }
 .focus-mode .structure,
+.focus-mode .sidebar-resizer,
 .focus-mode .inspector,
 .focus-mode .app-header,
 .focus-mode .inspector-toggle {

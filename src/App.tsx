@@ -36,6 +36,9 @@ import ThemeToggle from "./components/ThemeToggle";
 import ThemePicker from "./components/ThemePicker";
 import OutlineTree from "./components/OutlineTree";
 import InlineRename from "./components/InlineRename";
+import SidebarResizer, {
+  useResizableSidebar,
+} from "./components/SidebarResizer";
 import {
   SectionIcon,
   ProgressIcon,
@@ -210,6 +213,13 @@ export default function App() {
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(""), 5000);
   };
+  const sidebar = useResizableSidebar({
+    activeKey: book?.id,
+    focus,
+    inspectorVisible: inspector && !!chapter,
+    onSaveError: (error) =>
+      notify(`Could not save the left panel width: ${String(error)}`),
+  });
   async function flush() {
     if (timer.current) clearTimeout(timer.current);
     const batch = Array.from(dirty.current.values());
@@ -675,8 +685,16 @@ export default function App() {
                 </button>
               </div>
             </header>
-            <div className={`workspace ${bible ? "bible-workspace" : ""}`}>
-              <aside className="structure">
+            <div
+              className={`workspace ${bible ? "bible-workspace" : ""}`}
+              ref={sidebar.workspaceRef}
+            >
+              <aside
+                className="structure"
+                id="outline-panel"
+                ref={sidebar.sidebarRef}
+                style={sidebar.sidebarStyle}
+              >
                 <button
                   className="back-library"
                   onClick={() => {
@@ -896,6 +914,7 @@ export default function App() {
                   <CircleHelp size={15} /> A little guidance <kbd>?</kbd>
                 </button>
               </aside>
+              <SidebarResizer controls={sidebar} />
               <main className="editor-column">
                 <div className="editor-top">
                   <div
@@ -1086,7 +1105,7 @@ export default function App() {
                 </footer>
               </main>
               {inspector && chapter && (
-                <aside className="inspector">
+                <aside className="inspector" ref={sidebar.inspectorRef}>
                   <div className="inspector-title">
                     <span>{bible ? "Section details" : "Chapter details"}</span>
                     <button

@@ -1,16 +1,23 @@
-# CodeBook 0.2.6 — Markdown chapters and nested drag and drop
+# CodeBook 0.2.7 — Resizable left panel
 
-Import multiple Markdown files as editable chapters, then drag them into chapters, subchapters, or deeper sections using visible placement hints.
+Drag the left panel's right edge to give long chapter titles and nested systems more room, or narrow it to make more space for writing. CodeBook remembers your chosen width.
 
 ## Download
 
 - **[CodeBook.exe](https://github.com/dontwatchmedia/Codebook/releases/latest/download/CodeBook.exe)** — the current portable Windows executable.
-- **CodeBook-0.2.6-Windows.zip** — the same executable with a quick-start guide, README, validation notes, licenses, and SHA-256 checksum, available in the **[latest release](https://github.com/dontwatchmedia/Codebook/releases/latest)**.
+- **CodeBook-0.2.7-Windows.zip** — the same executable with a quick-start guide, README, validation notes, licenses, and SHA-256 checksum, available in the **[latest release](https://github.com/dontwatchmedia/Codebook/releases/latest)**.
 - **CodeBook.exe.sha256** — checksum for the executable.
 
 Download the EXE directly, or extract the ZIP and double-click CodeBook.exe. No Node.js, Rust, login, or development server is needed to use it. Requires 64-bit Windows 10/11 and Microsoft Edge WebView2. The executable is unsigned.
 
-## New in 0.2.6
+## New in 0.2.7
+
+- Drag the divider at the right edge of the left outline panel to make it wider or narrower in books and system bibles.
+- The chosen width survives reopening projects and restarting the app. Smaller windows temporarily limit the width to leave room for writing; expanding the window restores the chosen size.
+- Double-click the divider to restore the default responsive width. Use Left/Right arrows when the divider is focused, Shift for larger steps, or Home/End for the available limits.
+- The divider follows all eight color themes and hides with the left panel in Focus mode.
+
+## Included from 0.2.6
 
 - Select multiple `.md` / `.markdown` files with **Import chapters** or **Import sections**, or drop them directly onto the outline. Each file becomes a separate editable chapter or section, titled from its first H1 or filename.
 - Markdown prose uses **Arial 11pt**, 1.15 line spacing, and compact paragraph gaps. Headings use 22 / 16 / 14 / 12 / 11 / 11pt, with selective emphasis, nested lists, blockquotes, tables, links, dividers, and intact fenced-code language and whitespace.

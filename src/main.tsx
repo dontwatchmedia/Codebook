@@ -6,7 +6,13 @@ import "./components/theme.css";
 import { loadTheme } from "./theme";
 import { loadLayout } from "./layout";
 import { loadZoom } from "./zoom";
-void Promise.allSettled([loadTheme(), loadLayout(), loadZoom()])
+import { loadSidebarWidth } from "./sidebar";
+void Promise.allSettled([
+  loadTheme(),
+  loadLayout(),
+  loadZoom(),
+  loadSidebarWidth(),
+])
   .then((results) => {
     for (const result of results)
       if (result.status === "rejected") console.error(result.reason);

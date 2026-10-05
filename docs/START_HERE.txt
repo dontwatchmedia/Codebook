@@ -1,4 +1,4 @@
-CODEBOOK 0.2.6 — BOOKS AND SYSTEM BIBLES
+CODEBOOK 0.2.7 — BOOKS AND SYSTEM BIBLES
 
 Extract the ZIP, then double-click CodeBook.exe.
 
@@ -6,6 +6,9 @@ No account, internet connection, Node.js, or Rust is needed to write.
 Requires 64-bit Windows 10/11 and Microsoft Edge WebView2.
 
 Open the Learning C++ sample, choose New book, or choose New system bible.
+Drag the left panel's right edge to make the outline wider or narrower.
+The width is remembered after restarting. Double-click the divider to reset.
+You can also focus it and press Left/Right, Shift for bigger steps, or Home/End.
 Compact writing is the default: less padding, tighter gaps, more room for text.
 Use the Compact / Original spacing choice above the editor to switch views.
 This changes the display; your saved typography and exports remain intact.

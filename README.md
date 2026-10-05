@@ -84,9 +84,19 @@ To use an existing book as a system bible, open its settings beside the project 
 - A formatting toolbar, slash insert menu, and command palette.
 - **Format Markdown** turns pasted `## headings`, `**bold**`, lists, links, tables, and fenced code into editable rich text with Google Docs-style typography. Select a passage to convert it, or leave nothing selected to format the current chapter or section. Use Undo to restore the original text.
 - Chapter writing status, section progress, tags, private notes, word counts, and estimated reading time.
-- Project search, code and tag filters, and chapter or section find and replace.
+- Find and replace with highlighted matches, nested section paths, and project-wide navigation.
 
 ![CodeBook Format Markdown button with converted headings, bold text, a list, table, and code](docs/images/format-markdown.png)
+
+### Find writing and resume where you left off
+
+- Press **Ctrl+F** or click **Search**. Find starts in the current chapter or section, then continues through the project and wraps around. Results show each section's full ancestor path, match count, and text snippets.
+- Matching text is highlighted in the open document, with a distinct highlight for the current match. Use **Enter** for the next match and **Shift+Enter** for the previous one, or choose a result directly.
+- The Find panel keeps its query and each section's current match when you switch sections manually. **Replace** and **Replace all** change only the **current chapter or section**; use Undo to restore the change.
+- Each chapter or section remembers its scroll position and caret or text selection. Reopening a project resumes its last visited section. Reading positions are local preferences, separate from the exported project; the latest position may be lost after a forced app shutdown.
+- **Ctrl+Shift+F** opens the advanced project search with text, code, and tag filters.
+
+![CodeBook Smart Find showing nested section paths, matching text snippets, and highlighted matches](docs/images/smart-search.png)
 
 ### Code examples and formatted paste
 
@@ -163,8 +173,9 @@ Locally inserted image files are embedded in the project. Images pasted as remot
 | Insert a link             | `Ctrl+K`                                 |
 | Undo / redo               | `Ctrl+Z` / `Ctrl+Y`                      |
 | Heading 1–3               | `Ctrl+Alt+1`–`3`                         |
-| Find in chapter / section | `Ctrl+F`                                 |
-| Search project            | `Ctrl+Shift+F`                           |
+| Find across the project   | `Ctrl+F`                                 |
+| Next / previous match     | `Enter` / `Shift+Enter` in Find          |
+| Advanced project search   | `Ctrl+Shift+F`                           |
 | Command palette           | `Ctrl+Shift+P`                           |
 | Save now                  | `Ctrl+S`                                 |
 | Leave focus mode          | `Esc`                                    |
@@ -172,7 +183,7 @@ Locally inserted image files are embedded in the project. Images pasted as remot
 
 ## Current release and roadmap
 
-CodeBook **0.2.8** adds a **Format Markdown** button for text already pasted into a chapter or section, with selection support and Undo. It includes a resizable outline, multiple Markdown-file import with Google Docs-style typography, direct dragging into deeper sections, 3,773 searchable offline emoji, writing zoom, eight color themes, double-click title renaming, and nested system bibles. Organize an overview into systems and features, mark progress, import technical content, edit code, save, reopen, and export.
+CodeBook **0.2.9** adds **Smart Find** with highlighted matches, nested section paths, and navigation across the project, plus remembered reading positions and the last visited section. It includes Format Markdown, a resizable outline, multiple Markdown-file import with Google Docs-style typography, direct dragging into deeper sections, 3,773 searchable offline emoji, writing zoom, eight color themes, double-click title renaming, and nested system bibles.
 
 **Available now:** deeply nested sections, topic icons, section progress, rich-text editing, code highlighting, formatted paste, dark mode, local autosave and recovery, book organization, search, and Markdown/HTML export.
 
@@ -213,6 +224,7 @@ npm.cmd test
 npm.cmd run test:e2e
 powershell -ExecutionPolicy Bypass -File scripts/desktop.ps1 test
 node scripts/native-smoke.mjs CodeBook.exe
+node scripts/native-search-smoke.mjs CodeBook.exe
 ```
 
 Browser workflows use Microsoft Edge. The native smoke test uses an isolated project directory and checks filesystem saving, restart persistence, dark-mode persistence, and recovery after forced termination.

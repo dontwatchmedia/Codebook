@@ -62,6 +62,8 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { readZoom, saveZoom } from "./zoom";
 import Modal from "./components/Modal";
 import Manuscript from "./editor/Manuscript";
+import FindPanel from "./components/FindPanel";
+import { readLastChapter } from "./editor/readingState";
 import {
   bookWords,
   chapters,
@@ -104,7 +106,6 @@ import {
 import { sampleBook } from "./sample";
 import { parseChapterFile } from "./importChapter";
 import { exportHTML, exportMarkdown } from "./export";
-import { findMatches } from "./search";
 
 let boot: ReturnType<typeof loadBooks> | null = null;
 function initialize() {
@@ -174,10 +175,16 @@ export default function App() {
     [query, setQuery] = useState(""),
     [searchFilter, setSearchFilter] = useState("all"),
     [findOpen, setFindOpen] = useState(false),
-    [find, setFind] = useState(""),
-    [replace, setReplace] = useState(""),
-    [caseSensitive, setCaseSensitive] = useState(false),
-    [matchIndex, setMatchIndex] = useState(0);
+    [findFocusRequest, setFindFocusRequest] = useState(0);
+  const [searchEditor, setSearchEditor] = useState<{
+    chapterId: string;
+    instance: Editor;
+  } | null>(null);
+  const [initialSearch, setInitialSearch] = useState<{
+    query: string;
+    chapterId: string;
+    revision: number;
+  } | null>(null);
   const [editorRevision, setEditorRevision] = useState(0);
   const [backups, setBackups] = useState<Backup[]>([]),
     [path, setPath] = useState(""),
@@ -206,7 +213,10 @@ export default function App() {
         ancestors(project, id).forEach((n) => next.delete(n.id));
         return next;
       });
-    setFindOpen(false);
+  }
+  function openFind() {
+    setFindOpen(true);
+    setFindFocusRequest((value) => value + 1);
   }
   const notify = (message: string) => {
     setToast(message);
@@ -345,7 +355,7 @@ export default function App() {
           if (e.shiftKey) {
             setQuery("");
             setDialog("search");
-          } else setFindOpen((v) => !v);
+          } else openFind();
         }
         if (e.shiftKey && e.key.toLowerCase() === "p") {
           e.preventDefault();
@@ -367,9 +377,14 @@ export default function App() {
   function openBook(b: Book) {
     setActiveId(b.id);
     setCollapsed(new Set());
-    setChapterId(
-      chapters(b).find((c) => c.kind === "chapter")?.id || chapters(b)[0].id,
-    );
+    const remembered = readLastChapter(b.id);
+    const resume =
+      chapters(b).find((c) => c.id === remembered)?.id ||
+      chapters(b).find((c) => c.kind === "chapter")?.id ||
+      chapters(b)[0].id;
+    revealSection(resume, b);
+    setFindOpen(false);
+    setInitialSearch(null);
     setPreview(false);
   }
   function newNode(type: "chapter" | "part", parentId?: string | null) {
@@ -497,32 +512,6 @@ export default function App() {
         setDialog(null);
       },
     });
-  }
-  function navigateFind(direction: number) {
-    const ed = editorRef.current;
-    if (!ed) return;
-    const matches = findMatches(ed, find, caseSensitive);
-    if (!matches.length) {
-      notify("No matches in this chapter.");
-      return;
-    }
-    const index = (matchIndex + direction + matches.length) % matches.length;
-    setMatchIndex(index);
-    ed.chain().setTextSelection(matches[index]).scrollIntoView().run();
-  }
-  function replaceMatches(all: boolean) {
-    const ed = editorRef.current;
-    if (!ed || preview) return;
-    const matches = findMatches(ed, find, caseSensitive);
-    if (!matches.length) return;
-    const selected = all ? matches : [matches[matchIndex % matches.length]];
-    let tr = ed.state.tr;
-    for (const m of [...selected].reverse())
-      tr = tr.insertText(replace, m.from, m.to);
-    ed.view.dispatch(tr);
-    notify(
-      `Replaced ${selected.length} match${selected.length === 1 ? "" : "es"}.`,
-    );
   }
   const commands = [
     { label: "Create a new book", run: () => setDialog("new") },
@@ -666,16 +655,10 @@ export default function App() {
                   toggle={() => setTheme(isDarkTheme(theme) ? "light" : "dark")}
                 />
                 <ThemePicker theme={theme} onChange={setTheme} />
-                <button
-                  className="subtle"
-                  onClick={() => {
-                    setQuery("");
-                    setDialog("search");
-                  }}
-                >
+                <button className="subtle" onClick={openFind}>
                   <Search size={17} />
                   <span>Search</span>
-                  <kbd>Ctrl ⇧ F</kbd>
+                  <kbd>Ctrl F</kbd>
                 </button>
                 <button
                   className="primary small"
@@ -996,73 +979,32 @@ export default function App() {
                     </button>
                   </div>
                 </div>
-                {findOpen && (
-                  <div className="find-bar">
-                    <Search size={16} />
-                    <input
-                      autoFocus
-                      aria-label={bible ? "Find in section" : "Find in chapter"}
-                      placeholder={
-                        bible ? "Find in section" : "Find in chapter"
-                      }
-                      value={find}
-                      onChange={(e) => {
-                        setFind(e.target.value);
-                        setMatchIndex(0);
-                      }}
-                    />
-                    <button
-                      className={caseSensitive ? "active" : ""}
-                      title="Case sensitive"
-                      onClick={() => setCaseSensitive((v) => !v)}
-                    >
-                      Aa
-                    </button>
-                    <button
-                      aria-label="Previous match"
-                      onClick={() => navigateFind(-1)}
-                    >
-                      <ArrowUp size={14} />
-                    </button>
-                    <button
-                      aria-label="Next match"
-                      onClick={() => navigateFind(1)}
-                    >
-                      <ArrowDown size={14} />
-                    </button>
-                    <input
-                      aria-label="Replace with"
-                      placeholder="Replace with"
-                      value={replace}
-                      onChange={(e) => setReplace(e.target.value)}
-                    />
-                    <button
-                      disabled={preview}
-                      onClick={() => replaceMatches(false)}
-                    >
-                      Replace
-                    </button>
-                    <button
-                      disabled={preview}
-                      onClick={() => replaceMatches(true)}
-                    >
-                      All
-                    </button>
-                    <button
-                      aria-label="Close find"
-                      onClick={() => setFindOpen(false)}
-                    >
-                      <X size={15} />
-                    </button>
-                  </div>
-                )}
+                <FindPanel
+                  key={book.id}
+                  book={book}
+                  chapterId={chapter?.id || ""}
+                  editor={searchEditor}
+                  open={findOpen}
+                  focusRequest={findFocusRequest}
+                  initialSearch={initialSearch}
+                  preview={preview}
+                  navigate={revealSection}
+                  close={() => setFindOpen(false)}
+                  notify={notify}
+                />
                 {chapter && (
                   <Manuscript
-                    key={`${chapter.id}-${editorRevision}-${bible}`}
+                    key={`${book.id}-${chapter.id}-${editorRevision}-${bible}`}
+                    bookId={book.id}
                     chapter={chapter}
                     systemBible={bible}
                     onChange={(document) => updateChapter({ document })}
-                    onReady={(ed) => (editorRef.current = ed)}
+                    onReady={(ed) => {
+                      editorRef.current = ed;
+                      setSearchEditor(
+                        ed ? { chapterId: chapter.id, instance: ed } : null,
+                      );
+                    }}
                     preview={preview}
                     typewriter={typewriter}
                     fontSize={fontSize}
@@ -1892,7 +1834,11 @@ export default function App() {
                       onClick={() => {
                         revealSection(c.id);
                         setDialog(null);
-                        setFind(query);
+                        setInitialSearch({
+                          query,
+                          chapterId: c.id,
+                          revision: Date.now(),
+                        });
                         setFindOpen(true);
                       }}
                     >
@@ -2139,7 +2085,7 @@ export default function App() {
               ["Bold / italic", "Ctrl B / I"],
               ["Insert link", "Ctrl K"],
               ["Undo / redo", "Ctrl Z / Y"],
-              ["Find in chapter", "Ctrl F"],
+              ["Find and replace across chapters", "Ctrl F"],
               ["Search book", "Ctrl Shift F"],
               ["Command palette", "Ctrl Shift P"],
               ["Leave focus mode", "Esc"],

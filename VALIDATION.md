@@ -1,4 +1,4 @@
-# CodeBook 0.2.8 validation
+# CodeBook 0.2.9 validation
 
 Validated on Windows with Node 24, Microsoft Edge, Rust 1.98.1, and the native Tauri/WebView2 runtime.
 
@@ -7,10 +7,10 @@ Validated on Windows with Node 24, Microsoft Edge, Rust 1.98.1, and the native T
 | Check                                                                      | Result           |
 | -------------------------------------------------------------------------- | ---------------- |
 | TypeScript and production Vite build                                       | Pass             |
-| Document, Markdown, clipboard, hierarchy, emoji, export, and storage tests | 170 passed       |
-| Browser workflows in Microsoft Edge                                        | 37 passed        |
+| Document, Markdown, clipboard, hierarchy, emoji, export, and storage tests | 185 passed       |
+| Browser workflows in Microsoft Edge                                        | 45 passed        |
 | Rust atomic replacement, path validation, recovery and preferences         | 9 passed         |
-| Native application integration                                             | 28 checks passed |
+| Native application integration                                             | 34 checks passed |
 
 The permanent clipboard test uses the specification's exact Hello World structure: H2, paragraph, C++ code, paragraph with inline code, H3, numbered list. It checks language, whitespace, and inline semantics, plus Markdown export/import round trips.
 
@@ -31,6 +31,12 @@ Markdown file tests cover `.md` and `.markdown`, first-H1 and filename titles, h
 Browser import workflows select multiple files, measure their actual fonts, inspect saved documents, and compare them after reload. Files dropped into rows or before/root positions retain their batch order and become separate sections. Pointer drags exercise before/inside/after/root placement in both books and bibles to four child levels, move whole subtrees, preserve writing and metadata, and reject parent/descendant cycles. Windows sets frontend drag handling as required by the [Tauri configuration](https://v2.tauri.app/reference/config/#windowconfig), and the compiled-app workflow also tests pointer dragging and real local file drops.
 
 ## Native integration
+
+Smart Find unit checks cover real document positions across formatting marks, hard breaks, inline objects, nested lists, tables and code, Unicode case folding without offset drift, literal non-overlapping queries, outline traversal order, and transient highlights that never enter saved content or Undo. Browser workflows exercise the first match in the current chapter, forward/backward wrapping across nested chapters, full ancestor paths and snippets, revealing collapsed parents, query and per-section occurrence retention, repeated Ctrl+F focus, the advanced-search handoff, and distant-match scrolling while Find retains keyboard focus. Replace and Replace all are limited to the current chapter or section and are checked against saved documents with Undo/Redo and reload.
+
+Reading-position checks cover separate scroll offsets and text selections in overview and nested sections, editing after returning to the correct section, bookshelf reopen and browser reload, corrupt/invalid saved preferences, storage failures, and clamping a saved caret when a document becomes shorter. View state is stored outside project documents, so it is not included in exports. These preferences are local and can lose their latest update on a forced WebView shutdown; section switching and reopening within the running Windows app are the native acceptance cases.
+
+The native search fixture exposed an existing view-only update: setting editor editability on mount emitted a document update, normalizing untouched attributes and changing modification dates. Editability changes now suppress document updates. A regression test compares the entire original book, including absent default attributes and timestamps, after navigation, scrolling, selecting, Preview toggles, and reopening; it failed before the fix and passes afterward.
 
 Format Markdown checks reproduce rich-HTML paste that contains literal Markdown instead of semantic headings and emphasis. They cover Google-style font sizes, nested lists, GFM tables with and without outer pipes, reference links, hard breaks, paragraph-per-line code fences, exact code whitespace, and existing rich blocks and inline marks. Selection checks retain outside text and formatting, including partial paragraph boundaries. Conversion has its own Undo history step, separate from the earlier paste and later typing. Browser workflows compare saved JSON through Undo, Redo, and reload, check that a second conversion is a no-op, and exercise keyboard activation and the visible button at 960 × 650 with a wide outline. Whole-section conversion preserves existing rich containers; an inline selection within one can be formatted separately.
 
@@ -71,6 +77,15 @@ Writing-zoom workflows compare actual rendered text ranges at 100% and 80% for 1
 27. Restarts the process and verifies the converted document, code, font attributes, and Compact layout.
 28. Checks for JavaScript runtime errors throughout the workflow.
 
+`node scripts/native-search-smoke.mjs CodeBook.exe` separately seeds an isolated system bible and checks six additional behaviors in the compiled Windows app:
+
+1. Current-section-first Ctrl+F, split-format matches, distant-match scrolling with search-input focus retained, nested ancestor paths, and whole-project wrapping.
+2. Single replacement, section-only Replace all, Undo/Redo, and actual native saved JSON with other sections retained exactly.
+3. Independent scroll and text-selection restoration, followed by typing into the correct restored section.
+4. Find query and per-section occurrence retention during outline navigation, and repeated Ctrl+F without closing Find.
+5. Reopening the project from the bookshelf at its last section and reading position.
+6. No JavaScript runtime errors throughout those interactions.
+
 The first native crash test exposed WebView2's delayed browser-storage persistence. The implementation was corrected to write an immediate, flushed, atomic recovery file through Rust. The repeated test passed with that change. Recovery cleanup compares revision timestamps so an older completed save cannot delete a newer pending edit.
 
 The first 0.2.8 native run timed out waiting for the existing sidebar reset to persist, after its visual width had reset. A repeat of the complete workflow with the same executable passed all 28 checks. The initial failure did not capture enough evidence to establish a cause; the harness now saves a screenshot and diagnostic report on failure.
@@ -93,6 +108,8 @@ Reviewed the Windows White editor with the widened left panel: nested chapter ti
 
 Reviewed the actual Windows Format Markdown result in White with Compact layout and 80% writing zoom. The labeled toolbar button is visible; converted headings, selective bold and italic, list, table, and highlighted JavaScript fit cleanly. The original rich heading and literal C++ example remain intact.
 
+Reviewed Smart Find at the minimum 960 × 650 browser window with a wide outline: search and replacement controls fit, results scroll independently, and a distant active match is brought visibly into the writing pane. Also reviewed the compiled Windows app in White at 80% zoom with nested result paths, match counts, and distinct current-match highlighting.
+
 ## Limits of these results
 
 - A process-crash test is not a hardware power-loss test.
@@ -106,4 +123,4 @@ Reproduce using the commands in `README.md`. Native reports and screenshots are 
 
 ## Package audit
 
-The root, build, and release executable copies have matching SHA-256 hashes. The portable ZIP contains the current executable, quick-start guide, README, validation notes, licenses including the Unicode notice, checksum, and the twelve screenshots referenced by the README. Its embedded executable matches the tested native build; previous executables and user projects are excluded.
+The root, build, and release executable copies have matching SHA-256 hashes. The portable ZIP contains the current executable, quick-start guide, README, validation notes, licenses including the Unicode notice, checksum, and the thirteen screenshots referenced by the README. Its embedded executable matches the tested native build; previous executables and user projects are excluded.

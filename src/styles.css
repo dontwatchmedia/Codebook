@@ -2778,3 +2778,114 @@ button.active {
   font-weight: 600;
   white-space: nowrap;
 }
+.project-find {
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: 46%;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  padding: 9px 14px;
+  gap: 7px;
+  font-size: 11px;
+}
+.project-find-controls,
+.project-find-replace {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+.project-find input {
+  flex: 1;
+  width: 140px;
+  min-width: 80px;
+  padding: 7px 8px;
+  font-size: 12px;
+}
+.project-find button {
+  padding: 6px 8px;
+}
+.project-find-controls > input {
+  min-width: 110px;
+}
+.project-find-replace button {
+  border: 1px solid var(--line);
+}
+.project-find-summary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 14px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.project-find-summary > span:last-child {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.project-find-results {
+  min-height: 0;
+  max-height: 180px;
+  overflow: auto;
+  border-top: 1px solid var(--line);
+}
+.project-find-group {
+  padding: 8px 0 4px;
+}
+.project-find-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.project-find-heading strong {
+  overflow-wrap: anywhere;
+}
+.project-find-heading > span {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+.project-find-group > small {
+  display: block;
+  color: var(--muted);
+  margin: 3px 0 5px;
+  overflow-wrap: anywhere;
+}
+.project-find-group > button {
+  display: flex;
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+  gap: 10px;
+}
+.project-find-group > button > span:first-child {
+  color: var(--muted);
+  min-width: 15px;
+}
+.project-find-group > button > span:last-child {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.project-find-group > button.active {
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 var(--accent);
+}
+.project-find-more {
+  width: 100%;
+  color: var(--accent);
+}
+.manuscript .search-match {
+  background: #fff0a6 !important;
+  color: #29231a !important;
+  border-radius: 2px;
+}
+.manuscript .search-match.is-active {
+  background: #ffcb66 !important;
+  color: #211500 !important;
+  box-shadow: 0 0 0 1px #a96300;
+}

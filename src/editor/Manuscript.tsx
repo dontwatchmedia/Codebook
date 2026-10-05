@@ -1,6 +1,6 @@
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import type { JSONContent } from "@tiptap/core";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Undo2,
   Redo2,
@@ -30,8 +30,15 @@ import { formatMarkdown } from "./formatMarkdown";
 import { clipboardHTML, NATIVE_MIME } from "../clipboard";
 import { validateDocument, type Chapter } from "../model";
 import { DOMSerializer } from "@tiptap/pm/model";
+import { TextSelection } from "@tiptap/pm/state";
+import {
+  readReadingState,
+  rememberChapter,
+  saveReadingState,
+} from "./readingState";
 
 interface Props {
+  bookId: string;
   chapter: Chapter;
   systemBible?: boolean;
   onChange: (doc: JSONContent) => void;
@@ -43,6 +50,7 @@ interface Props {
   notify: (message: string) => void;
 }
 export default function Manuscript({
+  bookId,
   chapter,
   systemBible = false,
   onChange,
@@ -57,6 +65,7 @@ export default function Manuscript({
     [slash, setSlash] = useState(false),
     [link, setLink] = useState<string | null>(null);
   const file = useRef<HTMLInputElement>(null),
+    paperScroll = useRef<HTMLDivElement>(null),
     callback = useRef(onChange);
   callback.current = onChange;
   const editor = useEditor({
@@ -163,12 +172,63 @@ export default function Manuscript({
     };
     reader.readAsDataURL(image);
   }
+  useLayoutEffect(() => {
+    if (!editor || !paperScroll.current) return;
+    const scroll = paperScroll.current;
+    const saved = readReadingState(bookId, chapter.id);
+    if (saved) {
+      const limit = editor.state.doc.content.size;
+      const selection = TextSelection.between(
+        editor.state.doc.resolve(Math.min(saved.anchor, limit)),
+        editor.state.doc.resolve(Math.min(saved.head, limit)),
+      );
+      editor.view.dispatch(
+        editor.state.tr.setSelection(selection).setMeta("addToHistory", false),
+      );
+      // Restore before onReady, so an explicit search jump can take priority.
+      // Do not focus: navigating from the outline or Find must keep its focus.
+      scroll.scrollTo({
+        top: saved.scrollTop,
+        left: saved.scrollLeft,
+        behavior: "instant",
+      });
+    }
+    rememberChapter(bookId, chapter.id);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const save = () => {
+      if (timer) clearTimeout(timer);
+      timer = undefined;
+      if (editor.isDestroyed) return;
+      const { anchor, head } = editor.state.selection;
+      saveReadingState(bookId, chapter.id, {
+        anchor,
+        head,
+        scrollTop: scroll.scrollTop,
+        scrollLeft: scroll.scrollLeft,
+      });
+    };
+    const schedule = () => {
+      if (!timer) timer = setTimeout(save, 150);
+    };
+    editor.on("selectionUpdate", schedule);
+    editor.on("update", schedule);
+    scroll.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("pagehide", save);
+    return () => {
+      save();
+      editor.off("selectionUpdate", schedule);
+      editor.off("update", schedule);
+      scroll.removeEventListener("scroll", schedule);
+      window.removeEventListener("pagehide", save);
+    };
+  }, [editor, bookId, chapter.id]);
   useEffect(() => {
     onReady(editor);
     return () => onReady(null);
   }, [editor]);
   useEffect(() => {
-    editor?.setEditable(!preview);
+    // Reading mode changes the view, not the document or its modified date.
+    editor?.setEditable(!preview, false);
   }, [editor, preview]);
   useEffect(() => {
     if (!editor) return;
@@ -461,7 +521,7 @@ export default function Manuscript({
           )}
         </div>
       )}
-      <div className="paper-scroll">
+      <div className="paper-scroll" ref={paperScroll}>
         <article
           className="paper"
           style={

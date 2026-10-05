@@ -1,4 +1,5 @@
 import { Node, mergeAttributes } from "@tiptap/core";
+import { SearchHighlights } from "./SearchHighlights";
 import {
   NodeViewContent,
   NodeViewWrapper,
@@ -185,6 +186,7 @@ export function extensions() {
     }),
     ImportedTextStyle,
     ImportedBlockStyle,
+    SearchHighlights,
     TechnicalCode,
     Image.configure({ allowBase64: true }),
     TableKit.configure({ table: { resizable: true } }),

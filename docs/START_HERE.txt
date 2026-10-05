@@ -1,4 +1,4 @@
-CODEBOOK 0.2.8 — BOOKS AND SYSTEM BIBLES
+CODEBOOK 0.2.9 — BOOKS AND SYSTEM BIBLES
 
 Extract the ZIP, then double-click CodeBook.exe.
 
@@ -44,6 +44,21 @@ Click Format Markdown in the writing toolbar. Select text to convert only
 that passage, or leave nothing selected to format the chapter or section.
 The converted text uses the same Google-style typography as Markdown imports.
 Undo restores the original text.
+
+Press Ctrl+F or click Search to find writing. Results start in the current
+chapter or section, then continue through the project and wrap around.
+Full section paths, match counts, and snippets help locate nested writing.
+Matches are highlighted; the current match has a distinct highlight.
+Enter goes to the next match and Shift+Enter goes to the previous one.
+Find keeps its query and each section's match as you switch sections.
+Replace and Replace all affect ONLY the current chapter or section.
+Use Undo to restore a replacement. Ctrl+Shift+F opens advanced project
+search with text, code, and tag filters.
+
+Switching sections remembers each section's scroll position and selection.
+Reopening a project resumes its last visited section. These local reading
+preferences are separate from project exports; a forced app shutdown can
+lose the latest position.
 
 Use Section icon and Progress in the details panel to mark each section.
 Progress choices are Not started, In progress, Complete, Blocked, and

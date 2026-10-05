@@ -262,9 +262,11 @@ test("formatting, table edits, replace, and private project export work", async 
 }) => {
   await openSample(page);
   await page.keyboard.press("Control+f");
-  await page.getByRole("textbox", { name: "Find in chapter" }).fill("small");
+  await page.getByRole("textbox", { name: "Find in book" }).fill("small");
   await page.getByRole("textbox", { name: "Replace with" }).fill("little");
-  await page.getByRole("button", { name: "All", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Replace all in chapter", exact: true })
+    .click();
   await expect(page.locator(".manuscript")).toContainText("a little one");
   await page.getByRole("button", { name: "Close find" }).click();
   await page.getByRole("textbox", { name: "Chapter manuscript" }).click();

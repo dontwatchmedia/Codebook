@@ -1,16 +1,24 @@
-# CodeBook 0.2.8 — Format pasted Markdown
+# CodeBook 0.2.9 — Smart Find and remembered reading positions
 
-Turn pasted Markdown symbols into editable headings, bold text, lists, tables, and code with the new **Format Markdown** button in the writing toolbar.
+Find writing across deeply nested chapters and sections, then return to each section where you left off.
 
 ## Download
 
 - **[CodeBook.exe](https://github.com/dontwatchmedia/Codebook/releases/latest/download/CodeBook.exe)** — the current portable Windows executable.
-- **CodeBook-0.2.8-Windows.zip** — the same executable with a quick-start guide, README, validation notes, licenses, and SHA-256 checksum, available in the **[latest release](https://github.com/dontwatchmedia/Codebook/releases/latest)**.
+- **CodeBook-0.2.9-Windows.zip** — the same executable with a quick-start guide, README, validation notes, licenses, and SHA-256 checksum, available in the **[latest release](https://github.com/dontwatchmedia/Codebook/releases/latest)**.
 - **CodeBook.exe.sha256** — checksum for the executable.
 
 Download the EXE directly, or extract the ZIP and double-click CodeBook.exe. No Node.js, Rust, login, or development server is needed to use it. Requires 64-bit Windows 10/11 and Microsoft Edge WebView2. The executable is unsigned.
 
-## New in 0.2.8
+## New in 0.2.9
+
+- **Ctrl+F** or **Search** opens Smart Find. It starts in the current chapter or section, continues through the project, and wraps around. Grouped results include full ancestor paths, match counts, and snippets.
+- The open document highlights all matches and distinguishes the current match. Use **Enter** / **Shift+Enter** for next / previous, or choose a result to jump directly to its text.
+- Find keeps the query and each section's current match when you switch sections manually. **Replace** and **Replace all** affect only the **current chapter or section** and support Undo.
+- Each section remembers its scroll position and caret or selection. Reopening a project resumes its last visited section. These local reading preferences are separate from project exports; a forced shutdown can lose the latest position.
+- **Ctrl+Shift+F** retains advanced project search with text, code, and tag filters. Compact spacing, writing zoom, color themes, and the resizable outline remain available.
+
+## Included from 0.2.8
 
 - Click **Format Markdown** to convert Markdown already pasted into the editor. Select a passage to convert that text, or leave nothing selected to process the current chapter or section.
 - Converted writing uses the established Google Docs-style Arial typography, compact paragraph spacing, and heading sizes. Markdown emphasis, lists, links, tables, dividers, and fenced code become editable content.

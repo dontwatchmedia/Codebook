@@ -1,16 +1,22 @@
-# CodeBook 0.2.7 — Resizable left panel
+# CodeBook 0.2.8 — Format pasted Markdown
 
-Drag the left panel's right edge to give long chapter titles and nested systems more room, or narrow it to make more space for writing. CodeBook remembers your chosen width.
+Turn pasted Markdown symbols into editable headings, bold text, lists, tables, and code with the new **Format Markdown** button in the writing toolbar.
 
 ## Download
 
 - **[CodeBook.exe](https://github.com/dontwatchmedia/Codebook/releases/latest/download/CodeBook.exe)** — the current portable Windows executable.
-- **CodeBook-0.2.7-Windows.zip** — the same executable with a quick-start guide, README, validation notes, licenses, and SHA-256 checksum, available in the **[latest release](https://github.com/dontwatchmedia/Codebook/releases/latest)**.
+- **CodeBook-0.2.8-Windows.zip** — the same executable with a quick-start guide, README, validation notes, licenses, and SHA-256 checksum, available in the **[latest release](https://github.com/dontwatchmedia/Codebook/releases/latest)**.
 - **CodeBook.exe.sha256** — checksum for the executable.
 
 Download the EXE directly, or extract the ZIP and double-click CodeBook.exe. No Node.js, Rust, login, or development server is needed to use it. Requires 64-bit Windows 10/11 and Microsoft Edge WebView2. The executable is unsigned.
 
-## New in 0.2.7
+## New in 0.2.8
+
+- Click **Format Markdown** to convert Markdown already pasted into the editor. Select a passage to convert that text, or leave nothing selected to process the current chapter or section.
+- Converted writing uses the established Google Docs-style Arial typography, compact paragraph spacing, and heading sizes. Markdown emphasis, lists, links, tables, dividers, and fenced code become editable content.
+- The conversion is one undoable action. Existing headings, images, tables, and programming code are retained, and converted writing saves with the chapter as usual.
+
+## Included from 0.2.7
 
 - Drag the divider at the right edge of the left outline panel to make it wider or narrower in books and system bibles.
 - The chosen width survives reopening projects and restarting the app. Smaller windows temporarily limit the width to leave room for writing; expanding the window restores the chosen size.

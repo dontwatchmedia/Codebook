@@ -968,6 +968,148 @@ try {
   evidence.checks.push(
     "Double-clicking the native divider restored the responsive default and persisted the reset without discarding other preferences",
   );
+  await page.getByRole("button", { name: "Add chapter", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByLabel("Title", { exact: true })
+    .fill("Markdown formatting");
+  await page
+    .getByRole("button", { name: "Create chapter", exact: true })
+    .click();
+  const markdownEditor = () =>
+    page.getByRole("textbox", { name: "Chapter manuscript", exact: true });
+  await markdownEditor().focus();
+  await page.evaluate(() => {
+    const html = [
+      '<h1 style="font-family:Arial;font-size:22pt">Forest systems</h1>',
+      '<p style="font-family:Arial;font-size:11pt">Trees have a **life cycle**, with *room for regrowth*.</p>',
+      "<p>## Tree lifecycle</p>",
+      "<p>**Standing tree → Felled tree → Stump → Regrowth**</p>",
+      "<p>- The trunk falls physically</p>",
+      "<p>- The stump remains in the world</p>",
+      "<p>- Replanting starts the next cycle</p>",
+      "<p>| Stage | Result |</p>",
+      "<p>| --- | --- |</p>",
+      "<p>| Stump | Regrowth |</p>",
+      "<p>```javascript</p>",
+      '<p>const label = "**literal**";</p>',
+      "<p>    return label;</p>",
+      "<p>```</p>",
+      '<pre><code class="language-cpp">// ## Literal heading\n// **Literal emphasis**</code></pre>',
+    ].join("");
+    const data = new DataTransfer();
+    data.setData("text/html", html);
+    document.querySelector(".tiptap").dispatchEvent(
+      new ClipboardEvent("paste", {
+        clipboardData: data,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+  });
+  await expect(markdownEditor()).toContainText("**life cycle**");
+  await page
+    .getByRole("button", { name: "Saved on this device", exact: true })
+    .waitFor();
+  const savedMarkdownDocument = async () =>
+    (await projectByTitle("Native compact workspace")).project.nodes.find(
+      (node) => node.title === "Markdown formatting",
+    ).document;
+  const unformattedDocument = await savedMarkdownDocument();
+  await page
+    .getByRole("button", { name: "Format Markdown", exact: true })
+    .click();
+  await expect(markdownEditor().locator("h2")).toHaveText("Tree lifecycle");
+  await expect(
+    markdownEditor()
+      .locator("strong")
+      .filter({ hasText: /^life cycle$/ }),
+  ).toBeVisible();
+  await expect(markdownEditor().locator("ul > li")).toHaveCount(3);
+  await expect(markdownEditor().locator("table")).toContainText("Regrowth");
+  await expect(page.getByLabel("Code language").nth(0)).toHaveValue(
+    "javascript",
+  );
+  await expect(page.getByLabel("Code language").nth(1)).toHaveValue("cpp");
+  const formattedStyles = await markdownEditor().evaluate((element) => {
+    const prose = [...element.querySelectorAll("p")].find((p) =>
+      p.textContent.startsWith("Trees have"),
+    );
+    return {
+      family: getComputedStyle(prose).fontFamily,
+      prose: parseFloat(getComputedStyle(prose).fontSize),
+      heading: parseFloat(
+        getComputedStyle(element.querySelector("h2")).fontSize,
+      ),
+    };
+  });
+  expect(formattedStyles.family).toContain("Arial");
+  expect(formattedStyles.prose).toBeCloseTo((11 * 4) / 3, 2);
+  expect(formattedStyles.heading).toBeCloseTo((16 * 4) / 3, 2);
+  await page
+    .getByRole("button", { name: "Saved on this device", exact: true })
+    .waitFor();
+  const formattedDocument = await savedMarkdownDocument();
+  expect(formattedDocument.content[0]).toEqual(unformattedDocument.content[0]);
+  const existingCode = unformattedDocument.content.find(
+    (node) => node.type === "codeBlock",
+  );
+  expect(
+    formattedDocument.content.find(
+      (node) => node.type === "codeBlock" && node.attrs.language === "cpp",
+    ),
+  ).toEqual(existingCode);
+  expect(
+    formattedDocument.content
+      .find(
+        (node) =>
+          node.type === "codeBlock" && node.attrs.language === "javascript",
+      )
+      .content.map((node) => node.text || "")
+      .join(""),
+  ).toBe('const label = "**literal**";\n    return label;\n');
+  evidence.checks.push(
+    "Format Markdown converted literal Markdown in HTML-pasted prose into Google-style headings, selective emphasis, lists, tables and fenced code while preserving an existing heading and programming code",
+  );
+  await page
+    .getByRole("button", { name: "Undo (Ctrl+Z)", exact: true })
+    .click();
+  await expect(markdownEditor()).toContainText("**life cycle**");
+  await page
+    .getByRole("button", { name: "Saved on this device", exact: true })
+    .waitFor();
+  expect(await savedMarkdownDocument()).toEqual(unformattedDocument);
+  await page
+    .getByRole("button", { name: "Redo (Ctrl+Y)", exact: true })
+    .click();
+  await expect(markdownEditor().locator("h2")).toHaveText("Tree lifecycle");
+  await page
+    .getByRole("button", { name: "Saved on this device", exact: true })
+    .waitFor();
+  expect(await savedMarkdownDocument()).toEqual(formattedDocument);
+  await page.screenshot({
+    path: path.join(root, "native-format-markdown.png"),
+  });
+  evidence.checks.push(
+    "One native Undo restored the exact original pasted document and Redo restored the formatted document, with both states verified in the actual saved chapter",
+  );
+  await expect
+    .poll(async () => readdir(path.join(booksDir, "recovery")))
+    .toEqual([]);
+  await kill();
+  await launch();
+  await page
+    .getByRole("button", { name: "Open Native compact workspace", exact: true })
+    .click();
+  await importRow("Markdown formatting").click();
+  await expect(markdownEditor().locator("h2")).toHaveText("Tree lifecycle");
+  expect(await savedMarkdownDocument()).toEqual(formattedDocument);
+  await expect(page.getByLabel("Writing layout", { exact: true })).toHaveValue(
+    "compact",
+  );
+  evidence.checks.push(
+    "The formatted Markdown document and Compact layout survived a native process restart with code and Google-style font attributes intact",
+  );
   expect(evidence.errors).toEqual([]);
   evidence.checks.push("No JavaScript runtime errors during native workflow");
   await writeFile(
@@ -975,6 +1117,15 @@ try {
     JSON.stringify(evidence, null, 2),
   );
   console.log(JSON.stringify(evidence, null, 2));
+} catch (error) {
+  await page
+    ?.screenshot({ path: path.join(root, "failure.png") })
+    .catch(() => {});
+  await writeFile(
+    path.join(root, "failure.json"),
+    JSON.stringify({ ...evidence, failure: String(error) }, null, 2),
+  );
+  throw error;
 } finally {
   await kill();
 }

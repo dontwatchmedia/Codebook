@@ -1,4 +1,4 @@
-CODEBOOK 0.2.7 — BOOKS AND SYSTEM BIBLES
+CODEBOOK 0.2.8 — BOOKS AND SYSTEM BIBLES
 
 Extract the ZIP, then double-click CodeBook.exe.
 
@@ -38,6 +38,12 @@ Drag chapter titles the same way to reorder or nest entire branches.
 Use Move to top level to promote a branch. Child writing and metadata stay
 attached. Task checkboxes retain their states as text markers.
 Local companion images retain caption/path references; they are not embedded.
+
+Already pasted Markdown that still shows ## headings or **bold** markers?
+Click Format Markdown in the writing toolbar. Select text to convert only
+that passage, or leave nothing selected to format the chapter or section.
+The converted text uses the same Google-style typography as Markdown imports.
+Undo restores the original text.
 
 Use Section icon and Progress in the details panel to mark each section.
 Progress choices are Not started, In progress, Complete, Blocked, and

@@ -1,6 +1,6 @@
 [package]
 name = "codebook"
-version = "0.2.7"
+version = "0.2.8"
 description = "A book editor built for writing about code"
 authors = ["CodeBook"]
 edition = "2021"

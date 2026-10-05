@@ -82,8 +82,11 @@ To use an existing book as a system bible, open its settings beside the project 
 - Headings, paragraphs, bold, italic, underline, strikethrough, links, and inline code.
 - Bulleted and numbered lists, blockquotes, images, editable tables, and callouts.
 - A formatting toolbar, slash insert menu, and command palette.
+- **Format Markdown** turns pasted `## headings`, `**bold**`, lists, links, tables, and fenced code into editable rich text with Google Docs-style typography. Select a passage to convert it, or leave nothing selected to format the current chapter or section. Use Undo to restore the original text.
 - Chapter writing status, section progress, tags, private notes, word counts, and estimated reading time.
 - Project search, code and tag filters, and chapter or section find and replace.
+
+![CodeBook Format Markdown button with converted headings, bold text, a list, table, and code](docs/images/format-markdown.png)
 
 ### Code examples and formatted paste
 
@@ -169,7 +172,7 @@ Locally inserted image files are embedded in the project. Images pasted as remot
 
 ## Current release and roadmap
 
-CodeBook **0.2.7** adds a resizable left outline panel with a remembered width. It includes multiple Markdown-file import with Google Docs-style typography, direct dragging into deeper sections, 3,773 searchable offline emoji, writing zoom, eight color themes, double-click title renaming, and nested system bibles. Organize an overview into systems and features, mark progress, import technical content, edit code, save, reopen, and export.
+CodeBook **0.2.8** adds a **Format Markdown** button for text already pasted into a chapter or section, with selection support and Undo. It includes a resizable outline, multiple Markdown-file import with Google Docs-style typography, direct dragging into deeper sections, 3,773 searchable offline emoji, writing zoom, eight color themes, double-click title renaming, and nested system bibles. Organize an overview into systems and features, mark progress, import technical content, edit code, save, reopen, and export.
 
 **Available now:** deeply nested sections, topic icons, section progress, rich-text editing, code highlighting, formatted paste, dark mode, local autosave and recovery, book organization, search, and Markdown/HTML export.
 

@@ -23,8 +23,10 @@ import {
   Columns3,
   Rows3,
   Trash2,
+  WandSparkles,
 } from "lucide-react";
 import { extensions } from "./extensions";
+import { formatMarkdown } from "./formatMarkdown";
 import { clipboardHTML, NATIVE_MIME } from "../clipboard";
 import { validateDocument, type Chapter } from "../model";
 import { DOMSerializer } from "@tiptap/pm/model";
@@ -396,6 +398,31 @@ export default function Manuscript({
             )}
           </div>
           {tool("Insert block", <Plus />, () => setSlash(!slash), slash)}
+          <button
+            type="button"
+            className="format-markdown-button"
+            aria-label="Format Markdown"
+            title={`Format selected text as Markdown, or the whole ${systemBible ? "section" : "chapter"} when nothing is selected. Undo restores the original text.`}
+            disabled={editor.isEmpty}
+            onPointerDown={(event) => event.preventDefault()}
+            onClick={() => {
+              try {
+                const result = formatMarkdown(editor);
+                editor.commands.focus();
+                setSlash(false);
+                notify(
+                  result.changed
+                    ? "Markdown formatted. Undo restores the original text."
+                    : "No Markdown formatting found in this text.",
+                );
+              } catch {
+                notify("Unable to format this text as Markdown.");
+              }
+            }}
+          >
+            <WandSparkles aria-hidden="true" />
+            <span>Format Markdown</span>
+          </button>
         </div>
       )}
       {editor.isActive("table") && !preview && (

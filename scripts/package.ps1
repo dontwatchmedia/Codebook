@@ -29,7 +29,7 @@ try {
     foreach ($file in $files) {
         [IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $file, [IO.Path]::GetFileName($file)) | Out-Null
     }
-    foreach ($imageName in @('dark-editor.png','dark-bookshelf.png','system-bible-dark.png','google-docs-formatting.png','compact-workspace.png','midnight-editor.png','rose-editor.png','white-editor.png','emoji-search.png','markdown-import.png','resizable-outline.png')) {
+    foreach ($imageName in @('dark-editor.png','dark-bookshelf.png','system-bible-dark.png','google-docs-formatting.png','compact-workspace.png','midnight-editor.png','rose-editor.png','white-editor.png','emoji-search.png','markdown-import.png','resizable-outline.png','format-markdown.png')) {
         $imagePath = Join-Path $workspace "docs\images\$imageName"
         [IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $imagePath, "docs/images/$imageName") | Out-Null
     }

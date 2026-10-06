@@ -19,6 +19,7 @@ Writing a programming book or game system bible means moving between prose, code
 - **Make the space yours.** Resize the left panel, zoom its text with Ctrl+wheel, hide its lower tools, use compact writing, choose from eight color themes, and search 3,773 section emoji.
 - **Treat code as content.** Give code blocks a language, filename, and optional line numbers.
 - **Keep pasted structure.** Preserve headings, lists, links, tables, inline code, and fenced code blocks from supported rich text and Markdown.
+- **Keep growing.** Incremental desktop saves, cached document totals, responsive search, and a virtualized outline support large writing projects. Benchmarked with 700,000 words and up to 2,000 sections; see [performance evidence](VALIDATION.md#large-project-performance).
 - **Keep your work local.** Save structured project files on your computer, with autosave, recovery journals, and backup snapshots.
 - **Take your manuscript with you.** Export a formatted PDF, readable HTML, portable Markdown, or a complete `.codebook` project.
 
@@ -174,7 +175,7 @@ Books and system bibles are stored in your Windows application-data directory. *
 %APPDATA%\com.codebook.desktop\books\
 ```
 
-Each project uses structured JSON rather than an opaque manuscript format. The desktop app writes a recovery journal immediately and saves the main project after a 650 ms pause. It keeps up to 30 snapshots, captured at most once every five minutes while editing.
+Each project uses structured JSON rather than an opaque manuscript format. The desktop app journals only changed content through flushed, atomic writes. After a 650 ms pause it saves the main project on a background worker, so serializing the manuscript does not block typing. The Saved indicator waits for all queued saves to finish. It keeps up to 30 snapshots, captured at most once every five minutes while editing.
 
 **Export → CodeBook project** creates a portable backup with your writing, hierarchy, section icons and progress, embedded images, code metadata, and private notes. Markdown and HTML exports exclude private notes and tags.
 
@@ -199,13 +200,13 @@ Locally inserted image files are embedded in the project. Images pasted as remot
 
 ## Current release and roadmap
 
-CodeBook **0.2.10** adds a compact, zoomable outline with collapsible tools, branch controls, visible word/page totals, and formatted PDF export. It includes Smart Find, remembered reading positions, Format Markdown, a resizable outline, multiple Markdown-file import with Google Docs-style typography, nested drag-and-drop, 3,773 searchable offline emoji, writing zoom, eight color themes, and double-click title renaming.
+CodeBook **0.2.11** optimizes large manuscripts with incremental native saving, cached statistics and editor updates, a virtualized outline, and cancellable searches that reuse unchanged sections. Compact outline controls, word/page totals, and formatted PDF export remain available. It includes Smart Find, remembered reading positions, Format Markdown, a resizable outline, multiple Markdown-file import with Google Docs-style typography, nested drag-and-drop, 3,773 searchable offline emoji, writing zoom, eight color themes, and double-click title renaming.
 
 **Available now:** deeply nested sections, topic icons, section progress, rich-text editing, code highlighting, formatted paste, dark mode, local autosave and recovery, book organization, search, and PDF/Markdown/HTML export.
 
 **Not included yet:** EPUB, DOCX, AI writing tools, cloud synchronization, collaboration, comments, equations, diagrams, cross-references, and advanced publishing layouts. These are possible future features, not current capabilities or promised release dates.
 
-Markdown preserves supported writing blocks and a system bible's numbered hierarchy. Use `.codebook` for an exact project backup, including organization and metadata. Very large projects with thousands of sections, hundreds of thousands of words, or thousands of images have not been benchmarked.
+Markdown preserves supported writing blocks and a system bible's numbered hierarchy. Use `.codebook` for an exact project backup, including organization and metadata. The Windows app has been benchmarked with 172,000–700,000 words, up to 2,000 sections, and a 60,000-word individual section. See [timings, hardware, and limits](VALIDATION.md#large-project-performance). Opening a very long individual chapter still requires rendering its content, and image-heavy projects and multi-thousand-page PDF generation are not covered by these typing benchmarks. The browser development preview uses browser storage and does not have the native incremental save path.
 
 ## Build from source
 
@@ -242,6 +243,8 @@ powershell -ExecutionPolicy Bypass -File scripts/desktop.ps1 test
 node scripts/native-smoke.mjs CodeBook.exe
 node scripts/native-search-smoke.mjs CodeBook.exe
 node scripts/native-outline-pdf-smoke.mjs CodeBook.exe
+node scripts/native-delta-recovery-smoke.mjs CodeBook.exe
+node scripts/performance-smoke.mjs CodeBook.exe growth
 ```
 
 Browser workflows use Microsoft Edge. The native smoke test uses an isolated project directory and checks filesystem saving, restart persistence, dark-mode persistence, and recovery after forced termination.

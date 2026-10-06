@@ -1,4 +1,4 @@
-CODEBOOK 0.2.10 — BOOKS AND SYSTEM BIBLES
+CODEBOOK 0.2.11 — BOOKS AND SYSTEM BIBLES
 
 Extract the ZIP, then double-click CodeBook.exe.
 
@@ -78,6 +78,12 @@ their writing one level higher.
 
 To change an existing book into a system bible, open its settings beside
 the project title and change Project type. Writing and hierarchy stay intact.
+
+Large projects now use small incremental recovery writes and background
+snapshots in the Windows app. Word/page totals and unchanged content are
+reused, and large outlines render only the rows in view. Search cancels
+obsolete queries and pauses between sections to leave time for interaction.
+See VALIDATION.md for measured 700,000-word workloads and their limits.
 
 Your projects are saved in your Windows app-data folder, not beside the EXE.
 Preferences shows the exact location. Moving the EXE does not move your

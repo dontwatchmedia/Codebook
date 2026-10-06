@@ -1,6 +1,5 @@
 import { Extension, Mark } from "@tiptap/core";
-import { Plugin } from "@tiptap/pm/state";
-import { Decoration, DecorationSet } from "@tiptap/pm/view";
+import { cachedDecorationPlugin } from "./runtime";
 import {
   parseTextStyle,
   parseBlockStyle,
@@ -109,28 +108,24 @@ export const ImportedBlockStyle = Extension.create({
   name: "importedBlockStyle",
   addProseMirrorPlugins() {
     return [
-      new Plugin({
-        props: {
-          decorations(state) {
-            const blanks: Decoration[] = [];
-            state.doc.descendants((node, pos) => {
-              if (node.type.name !== "paragraph" || node.textContent.trim())
-                return;
-              let blank = true;
-              node.forEach((child) => {
-                if (!child.isText && child.type.name !== "hardBreak")
-                  blank = false;
-              });
-              if (blank)
-                blanks.push(
-                  Decoration.node(pos, pos + node.nodeSize, {
-                    "data-blank-line": "true",
-                  }),
-                );
-            });
-            return DecorationSet.create(state.doc, blanks);
-          },
-        },
+      cachedDecorationPlugin("importedBlankLines", (node) => {
+        if (!node.isTextblock) return node.isLeaf ? [] : null;
+        if (node.type.name !== "paragraph" || node.textContent.trim())
+          return [];
+        let blank = true;
+        node.forEach((child) => {
+          if (!child.isText && child.type.name !== "hardBreak") blank = false;
+        });
+        return blank
+          ? [
+              {
+                from: 0,
+                to: node.nodeSize,
+                node: true,
+                attributes: { "data-blank-line": "true" },
+              },
+            ]
+          : [];
       }),
     ];
   },

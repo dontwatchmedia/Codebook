@@ -1,4 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+mod book_storage;
 mod pdf;
 use serde_json::{json, Value};
 use std::{
@@ -13,6 +14,7 @@ use tauri::Manager;
 struct Storage {
     root: PathBuf,
     lock: Mutex<()>,
+    books: book_storage::BookStore,
 }
 fn safe_id(id: &str) -> Result<(), String> {
     if id.is_empty() || id.len() > 100 || !id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
@@ -64,35 +66,43 @@ fn clear_journal(root: &Path, id: &str, modified: Option<&str>) -> Result<(), St
     Ok(())
 }
 #[tauri::command]
-fn stage_book(book: Value, s: tauri::State<Storage>) -> Result<(), String> {
-    let id = validate(&book)?;
-    let _guard = s.lock.lock().map_err(|e| e.to_string())?;
-    let modified = book["modified"]
-        .as_str()
-        .ok_or("Missing modification time")?;
-    let path = s.root.join("recovery").join(format!("{}.json", id));
-    for candidate in [&path, &s.root.join(&id).join("book.json")] {
-        if read_book(candidate)
-            .map(|v| v["modified"].as_str().unwrap_or("") >= modified)
-            .unwrap_or(false)
-        {
-            return Ok(());
-        }
-    }
-    atomic_write(
-        &path,
-        &serde_json::to_vec(&book).map_err(|e| e.to_string())?,
-    )
+async fn stage_book(book: Value, s: tauri::State<'_, Storage>) -> Result<(), String> {
+    let books = s.books.clone();
+    tauri::async_runtime::spawn_blocking(move || books.stage(book))
+        .await
+        .map_err(|e| e.to_string())?
 }
 #[tauri::command]
-fn clear_recovery(
+async fn stage_book_patch(
+    patch: book_storage::BookPatch,
+    s: tauri::State<'_, Storage>,
+) -> Result<(), String> {
+    let books = s.books.clone();
+    tauri::async_runtime::spawn_blocking(move || books.stage_patch(patch))
+        .await
+        .map_err(|e| e.to_string())?
+}
+#[tauri::command]
+async fn checkpoint_book(
+    id: String,
+    modified: String,
+    s: tauri::State<'_, Storage>,
+) -> Result<(), String> {
+    let books = s.books.clone();
+    tauri::async_runtime::spawn_blocking(move || books.checkpoint(&id, &modified))
+        .await
+        .map_err(|e| e.to_string())?
+}
+#[tauri::command]
+async fn clear_recovery(
     id: String,
     modified: Option<String>,
-    s: tauri::State<Storage>,
+    s: tauri::State<'_, Storage>,
 ) -> Result<(), String> {
-    safe_id(&id)?;
-    let _guard = s.lock.lock().map_err(|e| e.to_string())?;
-    clear_journal(&s.root, &id, modified.as_deref())
+    let books = s.books.clone();
+    tauri::async_runtime::spawn_blocking(move || books.clear(&id, modified.as_deref()))
+        .await
+        .map_err(|e| e.to_string())?
 }
 #[tauri::command]
 fn storage_path(s: tauri::State<Storage>) -> String {
@@ -216,91 +226,25 @@ fn set_sidebar_width(width: Option<u16>, s: tauri::State<Storage>) -> Result<(),
     write_sidebar_width(&s.root, width)
 }
 #[tauri::command]
-fn load_library(s: tauri::State<Storage>) -> Result<Value, String> {
-    let _guard = s.lock.lock().map_err(|e| e.to_string())?;
-    let mut books = Vec::new();
-    let mut warnings = Vec::new();
-    fs::create_dir_all(&s.root).map_err(|e| e.to_string())?;
-    for entry in fs::read_dir(&s.root).map_err(|e| e.to_string())?.flatten() {
-        let path = entry.path().join("book.json");
-        if entry.file_name() == "trash" || !path.exists() {
-            continue;
-        }
-        match fs::read(&path)
-            .ok()
-            .and_then(|b| serde_json::from_slice::<Value>(&b).ok())
-            .filter(|v| validate(v).is_ok())
-        {
-            Some(book) => books.push(book),
-            None => warnings.push(format!(
-                "Could not read {}. The file was preserved; check its backups folder.",
-                path.display()
-            )),
-        }
-    }
-    let mut recovery = Vec::new();
-    if let Ok(entries) = fs::read_dir(s.root.join("recovery")) {
-        for e in entries.flatten() {
-            if let Some(book) = read_book(&e.path()) {
-                recovery.push(book);
-            }
-        }
-    }
-    Ok(json!({"books":books,"warnings":warnings,"recovery":recovery}))
+async fn load_library(s: tauri::State<'_, Storage>) -> Result<Value, String> {
+    let books = s.books.clone();
+    tauri::async_runtime::spawn_blocking(move || books.load())
+        .await
+        .map_err(|e| e.to_string())?
 }
 #[tauri::command]
-fn save_book(book: Value, s: tauri::State<Storage>) -> Result<(), String> {
-    let id = validate(&book)?;
-    let _guard = s.lock.lock().map_err(|e| e.to_string())?;
-    let dir = s.root.join(&id);
-    let path = dir.join("book.json");
-    let backups = dir.join("backups");
-    if path.exists() {
-        let previous = fs::read(&path).map_err(|e| e.to_string())?;
-        if let Ok(old) = serde_json::from_slice::<Value>(&previous) {
-            if old["modified"].as_str().unwrap_or("") > book["modified"].as_str().unwrap_or("") {
-                return Ok(());
-            }
-        }
-        fs::create_dir_all(&backups).map_err(|e| e.to_string())?;
-        let mut files: Vec<_> = fs::read_dir(&backups)
-            .map_err(|e| e.to_string())?
-            .flatten()
-            .map(|e| e.path())
-            .collect();
-        files.sort();
-        let last = files
-            .last()
-            .and_then(|p| p.file_stem())
-            .and_then(|s| s.to_str())
-            .and_then(|s| s.parse::<u128>().ok())
-            .unwrap_or(0);
-        if timestamp().saturating_sub(last) > 300_000 {
-            atomic_write(&backups.join(format!("{}.json", timestamp())), &previous)?;
-            while files.len() >= 30 {
-                let old = files.remove(0);
-                fs::remove_file(old).map_err(|e| e.to_string())?;
-            }
-        }
-    }
-    atomic_write(
-        &path,
-        &serde_json::to_vec_pretty(&book).map_err(|e| e.to_string())?,
-    )?;
-    clear_journal(&s.root, &id, book["modified"].as_str())
+async fn save_book(book: Value, s: tauri::State<'_, Storage>) -> Result<(), String> {
+    let books = s.books.clone();
+    tauri::async_runtime::spawn_blocking(move || books.save(book))
+        .await
+        .map_err(|e| e.to_string())?
 }
 #[tauri::command]
-fn delete_book(id: String, s: tauri::State<Storage>) -> Result<(), String> {
-    safe_id(&id)?;
-    let _guard = s.lock.lock().map_err(|e| e.to_string())?;
-    let trash = s.root.join("trash");
-    fs::create_dir_all(&trash).map_err(|e| e.to_string())?;
-    let src = s.root.join(&id);
-    if src.exists() {
-        fs::rename(src, trash.join(format!("{}-{}", id, timestamp())))
-            .map_err(|e| e.to_string())?;
-    }
-    clear_journal(&s.root, &id, None)
+async fn delete_book(id: String, s: tauri::State<'_, Storage>) -> Result<(), String> {
+    let books = s.books.clone();
+    tauri::async_runtime::spawn_blocking(move || books.delete(&id))
+        .await
+        .map_err(|e| e.to_string())?
 }
 #[tauri::command]
 fn list_backups(id: String, s: tauri::State<Storage>) -> Result<Value, String> {
@@ -334,6 +278,7 @@ fn main() {
                 .map(PathBuf::from)
                 .unwrap_or(app.path().app_data_dir()?.join("books"));
             app.manage(Storage {
+                books: book_storage::BookStore::new(root.clone()),
                 root,
                 lock: Mutex::new(()),
             });
@@ -342,6 +287,8 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             load_library,
             stage_book,
+            stage_book_patch,
+            checkpoint_book,
             clear_recovery,
             save_book,
             delete_book,

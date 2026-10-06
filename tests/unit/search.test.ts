@@ -11,6 +11,7 @@ import {
   findMatches,
   matchContext,
   searchBook,
+  searchBookAsync,
 } from "../../src/search";
 import { makeBook, makeChapter } from "../../src/model";
 
@@ -266,6 +267,54 @@ describe("project search ordering and context", () => {
     expect(matchContext(value, match, 100)).toBe(
       "Before the tree grows, the forest rests.",
     );
+  });
+  it("reuses matches and parsed unchanged branches after an immutable chapter edit", () => {
+    const book = makeBook("Incremental search");
+    const chapter = makeChapter("Section");
+    chapter.document = {
+      type: "doc",
+      content: [paragraph("tree one"), paragraph("tree two")],
+    };
+    book.nodes = [chapter];
+    const first = searchBook(book, "tree", false, chapter.id, schema)[0];
+    expect(searchBook(book, "tree", false, chapter.id, schema)[0].matches).toBe(
+      first.matches,
+    );
+    const changed = {
+      ...book,
+      nodes: [
+        {
+          ...chapter,
+          document: {
+            ...chapter.document,
+            content: [paragraph("tree one tree"), chapter.document.content![1]],
+          },
+        },
+      ],
+    };
+    const next = searchBook(changed, "tree", false, chapter.id, schema)[0];
+    expect(next.document.child(1)).toBe(first.document.child(1));
+    expect(next.matches).toHaveLength(3);
+    expect(
+      next.matches.map(({ from, to }) => next.document.textBetween(from, to)),
+    ).toEqual(["tree", "tree", "tree"]);
+  });
+  it("async search retains exact order and can be cancelled before reading a project", async () => {
+    const book = makeBook("Async search");
+    const chapter = makeChapter("Section");
+    chapter.document = {
+      type: "doc",
+      content: [paragraph("tree one tree two")],
+    };
+    book.nodes = [chapter];
+    expect(
+      await searchBookAsync(book, "tree", false, chapter.id, schema),
+    ).toEqual(searchBook(book, "tree", false, chapter.id, schema));
+    const abort = new AbortController();
+    abort.abort();
+    await expect(
+      searchBookAsync(book, "tree", false, chapter.id, schema, abort.signal),
+    ).rejects.toMatchObject({ name: "AbortError" });
   });
 });
 

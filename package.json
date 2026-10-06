@@ -1,6 +1,6 @@
 {
   "name": "codebook",
-  "version": "0.2.10",
+  "version": "0.2.11",
   "description": "Offline technical book writing software with rich text, syntax-highlighted code, formatted paste, and Markdown/HTML export.",
   "license": "MIT",
   "repository": {
@@ -23,6 +23,7 @@
     "@tauri-apps/api": "^2.0.0",
     "@tauri-apps/plugin-dialog": "^2.0.0",
     "@tiptap/core": "^3.0.0",
+    "@tiptap/extension-code-block": "^3.31.3",
     "@tiptap/extension-code-block-lowlight": "^3.0.0",
     "@tiptap/extension-image": "^3.0.0",
     "@tiptap/extension-placeholder": "^3.0.0",

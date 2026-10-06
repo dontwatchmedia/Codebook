@@ -5,7 +5,12 @@ import { ArrowDown, ArrowUp, Search, X } from "lucide-react";
 import { ancestors, type Book } from "../model";
 import { extensions } from "../editor/extensions";
 import { setSearchHighlights } from "../editor/SearchHighlights";
-import { searchBook, findMatches, type SearchMatch } from "../search";
+import {
+  searchBookAsync,
+  findMatches,
+  type ChapterSearchResults,
+  type SearchMatch,
+} from "../search";
 
 interface Target extends SearchMatch {
   chapterId: string;
@@ -46,6 +51,7 @@ export default function FindPanel({
   const [shown, setShown] = useState(60);
   const input = useRef<HTMLInputElement>(null);
   const pending = useRef<Target | null>(null);
+  const queuedMoves = useRef<number[]>([]);
   const continueAfterReplace = useRef<string | null>(null);
   const remembered = useRef(new Map<string, Target>());
   const previousChapter = useRef(chapterId);
@@ -56,21 +62,102 @@ export default function FindPanel({
   >(null);
   const [requestRevision, setRequestRevision] = useState(0);
   const schema = useMemo(() => getSchema(extensions()), []);
-  const groups = useMemo(
-    () => searchBook(book, query, sensitive, origin, schema),
-    [book, query, sensitive, origin, schema],
-  );
-  const matches = useMemo(
-    () =>
-      groups.flatMap((group) =>
-        group.matches.map((match) => ({
-          ...match,
-          chapterId: group.chapter.id,
-        })),
-      ),
-    [groups],
-  );
-  const activeIndex = matches.findIndex((match) => sameTarget(active, match));
+  const [result, setResult] = useState<{
+    book: Book;
+    query: string;
+    sensitive: boolean;
+    origin: string;
+    groups: ChapterSearchResults[];
+  } | null>(null);
+  const groups = result?.groups || [];
+  const searching =
+    open &&
+    (result?.book !== book ||
+      result.query !== query ||
+      result.sensitive !== sensitive ||
+      result.origin !== origin);
+  useEffect(() => {
+    if (!open) return;
+    const abort = new AbortController();
+    const timer = setTimeout(
+      () => {
+        void searchBookAsync(
+          book,
+          query,
+          sensitive,
+          origin,
+          schema,
+          abort.signal,
+        )
+          .then((groups) => {
+            if (!abort.signal.aborted)
+              setResult({ book, query, sensitive, origin, groups });
+          })
+          .catch((error: unknown) => {
+            if (!abort.signal.aborted) {
+              setResult({ book, query, sensitive, origin, groups: [] });
+              notify(`Search could not finish: ${String(error)}`);
+            }
+          });
+      },
+      query ? 120 : 0,
+    );
+    return () => {
+      clearTimeout(timer);
+      abort.abort();
+    };
+  }, [book, query, sensitive, origin, schema, open]);
+  // Keep offsets instead of duplicating every match into a second project-wide
+  // array. Even a common word can have hundreds of thousands of occurrences.
+  const matchIndex = useMemo(() => {
+    let total = 0;
+    const offsets = groups.map((group) => {
+      const start = total;
+      total += group.matches.length;
+      return start;
+    });
+    return { offsets, total };
+  }, [groups]);
+  const matchCount = matchIndex.total;
+  function indexOf(target: Target | null) {
+    if (!target) return -1;
+    const groupIndex = groups.findIndex(
+      (group) => group.chapter.id === target.chapterId,
+    );
+    if (groupIndex < 0) return -1;
+    const candidates = groups[groupIndex].matches;
+    let low = 0,
+      high = candidates.length;
+    while (low < high) {
+      const middle = (low + high) >>> 1;
+      if (candidates[middle].from < target.from) low = middle + 1;
+      else high = middle;
+    }
+    return candidates[low]?.from === target.from &&
+      candidates[low]?.to === target.to
+      ? matchIndex.offsets[groupIndex] + low
+      : -1;
+  }
+  function matchAt(index: number): Target | undefined {
+    if (index < 0 || index >= matchCount) return undefined;
+    let low = 0,
+      high = groups.length - 1;
+    while (low < high) {
+      const middle = Math.ceil((low + high) / 2);
+      if (matchIndex.offsets[middle] <= index) low = middle;
+      else high = middle - 1;
+    }
+    return {
+      ...groups[low].matches[index - matchIndex.offsets[low]],
+      chapterId: groups[low].chapter.id,
+    };
+  }
+  function chapterMatch(id: string, from = 0): Target | undefined {
+    const group = groups.find((candidate) => candidate.chapter.id === id);
+    const match = group?.matches.find((candidate) => candidate.from >= from);
+    return match && { ...match, chapterId: id };
+  }
+  const activeIndex = indexOf(active);
   const bible = book.mode === "bible";
   const sectionName = bible ? "section" : "chapter";
 
@@ -115,27 +202,40 @@ export default function FindPanel({
     }
   }
   function move(direction: number) {
-    if (!matches.length) return;
+    if (searching) {
+      queuedMoves.current.push(direction);
+      return;
+    }
+    if (!matchCount) return;
     const next =
       activeIndex < 0
         ? direction > 0
           ? Math.max(
               0,
-              matches.findIndex(
-                (match) => match.chapterId === continueAfterReplace.current,
-              ),
+              indexOf(chapterMatch(continueAfterReplace.current || "") || null),
             )
-          : matches.length - 1
-        : (activeIndex + direction + matches.length) % matches.length;
+          : matchCount - 1
+        : (activeIndex + direction + matchCount) % matchCount;
     setNotice(
       activeIndex >= 0 &&
-        (activeIndex + direction < 0 ||
-          activeIndex + direction >= matches.length)
+        (activeIndex + direction < 0 || activeIndex + direction >= matchCount)
         ? "Wrapped through the project"
         : "",
     );
-    showMatch(matches[next]);
+    showMatch(matchAt(next)!);
     continueAfterReplace.current = null;
+  }
+  function consumeQueuedMoves(start: number): number {
+    let index = start;
+    let wrapped = false;
+    for (const direction of queuedMoves.current) {
+      wrapped ||= index + direction < 0 || index + direction >= matchCount;
+      index = (index + direction + matchCount) % matchCount;
+    }
+    if (queuedMoves.current.length)
+      setNotice(wrapped ? "Wrapped through the project" : "");
+    queuedMoves.current = [];
+    return index;
   }
   function startSearch(
     nextQuery: string,
@@ -143,6 +243,7 @@ export default function FindPanel({
     startChapter = origin,
   ) {
     remembered.current.clear();
+    queuedMoves.current = [];
     pending.current = null;
     continueAfterReplace.current = null;
     request.current = {
@@ -159,7 +260,10 @@ export default function FindPanel({
     setRequestRevision((value) => value + 1);
   }
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      queuedMoves.current = [];
+      return;
+    }
     input.current?.focus();
     input.current?.select();
   }, [open, focusRequest]);
@@ -172,31 +276,32 @@ export default function FindPanel({
     if (previousChapter.current === chapterId) return;
     previousChapter.current = chapterId;
     if (pending.current?.chapterId === chapterId) return;
+    request.current = null;
+    queuedMoves.current = [];
     continueAfterReplace.current = null;
     // Ordinary outline navigation restores the reader's position, while search
     // keeps its query and remembers each section's last occurrence separately.
     setOrigin(chapterId);
     setNotice("");
     setShown(60);
-    const candidates = matches.filter((match) => match.chapterId === chapterId);
     const saved = remembered.current.get(chapterId);
     setActive(
-      candidates.find((match) => sameTarget(saved || null, match)) ||
-        candidates[0] ||
+      (saved && indexOf(saved) >= 0 ? saved : null) ||
+        chapterMatch(chapterId) ||
         null,
     );
-  }, [chapterId, matches]);
+  }, [chapterId, groups]);
   useEffect(() => {
-    if (!open || !editor || editor.chapterId !== chapterId) return;
+    if (!open || searching || !editor || editor.chapterId !== chapterId) return;
     const target = pending.current;
     if (target?.chapterId === chapterId) {
-      const valid = matches.find((match) => sameTarget(target, match));
+      const valid = indexOf(target) >= 0 ? target : null;
       pending.current = null;
       if (valid) showMatch(valid);
     }
-  }, [editor, chapterId, open, matches]);
+  }, [editor, chapterId, open, groups, searching]);
   useEffect(() => {
-    if (!open || !request.current) return;
+    if (!open || searching || !request.current) return;
     const next = request.current;
     if (
       next.kind === "first" &&
@@ -208,23 +313,22 @@ export default function FindPanel({
     request.current = null;
     let target: Target | undefined;
     if (next.kind === "afterReplace") {
-      target = !next.all
-        ? matches.find(
-            (match) =>
-              match.chapterId === next.chapterId && match.from >= next.from,
-          )
-        : undefined;
+      target = !next.all ? chapterMatch(next.chapterId, next.from) : undefined;
+      if (target && queuedMoves.current.length)
+        target = matchAt(consumeQueuedMoves(indexOf(target)));
       if (target) showMatch(target);
       else setActive(null);
       return;
     }
-    target ||= matches[0];
+    target = matchCount ? matchAt(consumeQueuedMoves(0)) : undefined;
+    if (!matchCount) queuedMoves.current = [];
     if (target) showMatch(target);
     else setActive(null);
-  }, [groups, matches, open, requestRevision, query, sensitive, origin]);
+  }, [groups, open, requestRevision, query, sensitive, origin, searching]);
   useEffect(() => {
     if (
       !open ||
+      searching ||
       activeIndex >= 0 ||
       pending.current ||
       request.current ||
@@ -233,29 +337,42 @@ export default function FindPanel({
       return;
     // Document edits can remove or shift a result. Never replace a stale range.
     setActive((current) => {
-      if (matches.some((match) => sameTarget(current, match))) return current;
+      if (indexOf(current) >= 0) return current;
       return (
-        matches.find(
-          (match) =>
-            match.chapterId === chapterId && match.from >= (current?.from || 0),
-        ) ||
-        matches.find((match) => match.chapterId === chapterId) ||
+        chapterMatch(chapterId, current?.from || 0) ||
+        chapterMatch(chapterId) ||
         null
       );
     });
-  }, [matches, activeIndex, open, chapterId]);
+  }, [groups, activeIndex, open, chapterId, searching]);
   useEffect(() => {
-    if (!editor || editor.instance.isDestroyed) return;
+    if (!open || searching || request.current || !queuedMoves.current.length)
+      return;
+    if (!matchCount) {
+      queuedMoves.current = [];
+      return;
+    }
+    showMatch(matchAt(consumeQueuedMoves(activeIndex >= 0 ? activeIndex : 0))!);
+  }, [groups, activeIndex, open, searching]);
+  useEffect(() => {
+    if (!editor || editor.instance.isDestroyed || (open && searching)) return;
     setSearchHighlights(
       editor.instance,
       open ? query : "",
       sensitive,
-      active?.chapterId === editor.chapterId ? active : undefined,
+      open && active?.chapterId === editor.chapterId ? active : undefined,
     );
-  }, [editor, query, sensitive, active, open, book]);
+  }, [editor, query, sensitive, active, open, book, searching]);
 
   function replaceMatches(all: boolean) {
-    if (!editor || editor.chapterId !== chapterId || preview || !query) return;
+    if (
+      !editor ||
+      editor.chapterId !== chapterId ||
+      preview ||
+      searching ||
+      !query
+    )
+      return;
     const instance = editor.instance;
     const current = findMatches(instance, query, sensitive);
     const chosen = all
@@ -325,7 +442,7 @@ export default function FindPanel({
         <button
           aria-label="Previous match"
           title="Previous match (Shift+Enter)"
-          disabled={!matches.length}
+          disabled={searching || !matchCount}
           onClick={() => move(-1)}
         >
           <ArrowUp size={15} />
@@ -333,7 +450,7 @@ export default function FindPanel({
         <button
           aria-label="Next match"
           title="Next match (Enter)"
-          disabled={!matches.length}
+          disabled={searching || !matchCount}
           onClick={() => move(1)}
         >
           <ArrowDown size={15} />
@@ -341,10 +458,11 @@ export default function FindPanel({
         <button
           aria-label="Close find"
           onClick={() => {
+            if (editor && !editor.instance.isDestroyed)
+              setSearchHighlights(editor.instance, "", sensitive);
+            queuedMoves.current = [];
             close();
-            editor?.instance.commands.focus(undefined, {
-              scrollIntoView: false,
-            });
+            editor?.instance.view.focus();
           }}
         >
           <X size={16} />
@@ -366,6 +484,7 @@ export default function FindPanel({
         <button
           disabled={
             preview ||
+            searching ||
             activeIndex < 0 ||
             active?.chapterId !== editor?.chapterId
           }
@@ -374,7 +493,12 @@ export default function FindPanel({
           Replace
         </button>
         <button
-          disabled={preview || !localCount || editor?.chapterId !== chapterId}
+          disabled={
+            preview ||
+            searching ||
+            !localCount ||
+            editor?.chapterId !== chapterId
+          }
           onClick={() => replaceMatches(true)}
         >
           Replace all in {sectionName}
@@ -384,9 +508,11 @@ export default function FindPanel({
         <span role="status" aria-label="Search match count">
           {!query
             ? "Search this project’s writing"
-            : !matches.length
-              ? "No matches"
-              : `${activeIndex >= 0 ? `${activeIndex + 1} of ` : ""}${matches.length} ${matches.length === 1 ? "match" : "matches"} · ${groups.length} ${sectionName}${groups.length === 1 ? "" : "s"}`}
+            : searching
+              ? "Searching…"
+              : !matchCount
+                ? "No matches"
+                : `${activeIndex >= 0 ? `${activeIndex + 1} of ` : ""}${matchCount} ${matchCount === 1 ? "match" : "matches"} · ${groups.length} ${sectionName}${groups.length === 1 ? "" : "s"}`}
         </span>
         <span>
           {notice ||
@@ -438,6 +564,7 @@ export default function FindPanel({
                         sameTarget(active, target) ? "true" : undefined
                       }
                       className={sameTarget(active, target) ? "active" : ""}
+                      disabled={searching}
                       onClick={() => {
                         setNotice("");
                         showMatch(target);
@@ -451,12 +578,12 @@ export default function FindPanel({
               </section>
             );
           })}
-          {matches.length > shown && (
+          {matchCount > shown && (
             <button
               className="project-find-more"
               onClick={() => setShown((value) => value + 60)}
             >
-              Show more matches ({matches.length - shown} remaining)
+              Show more matches ({matchCount - shown} remaining)
             </button>
           )}
         </div>

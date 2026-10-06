@@ -114,6 +114,67 @@ export const wordCount = (doc: JSONContent) =>
   (docText(doc).match(/\S+/g) ?? []).length;
 export const bookWords = (book: Book) =>
   chapters(book).reduce((sum, c) => sum + wordCount(c.document), 0);
+
+export interface DocumentStats {
+  words: number;
+  characters: number;
+}
+interface TextStats extends DocumentStats {
+  startsWithWord: boolean;
+  endsWithWord: boolean;
+}
+const documentStats = new WeakMap<JSONContent, TextStats>();
+/** Runtime editor snapshots are immutable. Public wordCount/bookWords remain mutation-fresh. */
+export function cachedDocumentStats(doc: JSONContent): DocumentStats {
+  const cached = documentStats.get(doc);
+  if (cached) return cached;
+  let result: TextStats;
+  if (typeof doc.text === "string") {
+    let words = 0;
+    const matcher = /\S+/g;
+    while (matcher.exec(doc.text)) words++;
+    result = {
+      words,
+      characters: doc.text.length,
+      startsWithWord: /^\S/.test(doc.text),
+      endsWithWord: /\S$/.test(doc.text),
+    };
+  } else {
+    const concatenate = ["text", "paragraph", "heading", "codeBlock"].includes(
+      doc.type || "",
+    );
+    result = {
+      words: 0,
+      characters: 0,
+      startsWithWord: false,
+      endsWithWord: false,
+    };
+    (doc.content || []).forEach((child, index) => {
+      const next = cachedDocumentStats(child) as TextStats;
+      if (!concatenate && index) {
+        result.characters++;
+        result.endsWithWord = false;
+      }
+      if (next.characters) {
+        if (result.characters === 0)
+          result.startsWithWord = next.startsWithWord;
+        result.words +=
+          next.words - (result.endsWithWord && next.startsWithWord ? 1 : 0);
+        result.characters += next.characters;
+        result.endsWithWord = next.endsWithWord;
+      }
+    });
+  }
+  documentStats.set(doc, result);
+  return result;
+}
+export function cachedBookWords(book: Book): number {
+  let total = 0;
+  for (const node of book.nodes)
+    if (node.type === "chapter")
+      total += cachedDocumentStats(node.document).words;
+  return total;
+}
 export function makeChapter(
   title = "Untitled chapter",
   parentId: string | null = null,
@@ -223,6 +284,24 @@ function validateFormattingAttributes(attrs: unknown): boolean {
   });
 }
 export function validateDocument(doc: JSONContent, depth = 0): boolean {
+  return validateDocumentWith(doc, depth, false);
+}
+const validationCache = new WeakMap<JSONContent, Map<number, boolean>>();
+function cachedValidateDocument(doc: JSONContent, depth = 0): boolean {
+  if (!doc || typeof doc !== "object") return false;
+  const previous = validationCache.get(doc);
+  if (previous?.has(depth)) return previous.get(depth)!;
+  const valid = validateDocumentWith(doc, depth, true);
+  const depths = previous || new Map<number, boolean>();
+  depths.set(depth, valid);
+  validationCache.set(doc, depths);
+  return valid;
+}
+function validateDocumentWith(
+  doc: JSONContent,
+  depth: number,
+  cached: boolean,
+): boolean {
   if (
     !doc ||
     typeof doc !== "object" ||
@@ -305,10 +384,24 @@ export function validateDocument(doc: JSONContent, depth = 0): boolean {
   return (
     !doc.content ||
     (Array.isArray(doc.content) &&
-      doc.content.every((n) => validateDocument(n, depth + 1)))
+      doc.content.every((n) =>
+        cached
+          ? cachedValidateDocument(n, depth + 1)
+          : validateDocumentWith(n, depth + 1, false),
+      ))
   );
 }
 export function validateBook(value: unknown): value is Book {
+  return validateBookWith(value, validateDocument);
+}
+/** For immutable editor snapshots only; imports and mutable callers use validateBook. */
+export function cachedValidateBook(value: unknown): value is Book {
+  return validateBookWith(value, cachedValidateDocument);
+}
+function validateBookWith(
+  value: unknown,
+  validateDoc: (doc: JSONContent) => boolean,
+): value is Book {
   if (!value || typeof value !== "object") return false;
   const b = value as Book;
   if (
@@ -348,7 +441,7 @@ export function validateBook(value: unknown): value is Book {
     if (n.type !== "part" && n.type !== "chapter") return false;
     if (
       n.type === "chapter" &&
-      (n.document?.type !== "doc" || !validateDocument(n.document))
+      (n.document?.type !== "doc" || !validateDoc(n.document))
     )
       return false;
     if (
@@ -430,29 +523,92 @@ export interface OutlineEntry {
   node: BookNode;
   depth: number;
 }
-
-/** The array determines sibling order; parentId determines the outline. */
-export function outlineEntries(book: Book): OutlineEntry[] {
+export interface OutlineIndex {
+  nodesById: Map<string, BookNode>;
+  childrenByParent: Map<string | null, BookNode[]>;
+  entries: OutlineEntry[];
+  positionById: Map<string, number>;
+  subtreeEndById: Map<string, number>;
+  numberById: Map<string, number>;
+}
+/** Construct once for an immutable nodes snapshot; no global cache hides mutations. */
+export function createOutlineIndex(nodes: BookNode[]): OutlineIndex {
+  const book = { nodes } as Book;
   const children = childrenByParent(book);
-  const pending = (children.get(null) ?? [])
+  const entries: OutlineEntry[] = [];
+  const positionById = new Map<string, number>();
+  const subtreeEndById = new Map<string, number>();
+  const numberById = new Map<string, number>();
+  let number = 0;
+  for (const node of nodes)
+    if (node.type === "chapter" && node.kind === "chapter")
+      numberById.set(node.id, ++number);
+  const pending: { node: BookNode; depth: number; exit?: boolean }[] = (
+    children.get(null) || []
+  )
     .map((node) => ({ node, depth: 0 }))
     .reverse();
-  const entries: OutlineEntry[] = [];
-  const seen = new Set<string>();
   while (pending.length) {
     const entry = pending.pop()!;
-    if (seen.has(entry.node.id)) continue;
-    seen.add(entry.node.id);
-    entries.push(entry);
-    const nested = children.get(entry.node.id) ?? [];
-    for (let i = nested.length - 1; i >= 0; i--)
-      pending.push({ node: nested[i], depth: entry.depth + 1 });
+    if (entry.exit) {
+      subtreeEndById.set(entry.node.id, entries.length);
+      continue;
+    }
+    if (positionById.has(entry.node.id)) continue;
+    positionById.set(entry.node.id, entries.length);
+    entries.push({ node: entry.node, depth: entry.depth });
+    pending.push({ ...entry, exit: true });
+    const nested = children.get(entry.node.id) || [];
+    for (let index = nested.length - 1; index >= 0; index--)
+      pending.push({ node: nested[index], depth: entry.depth + 1 });
   }
-  return entries;
+  return {
+    nodesById: new Map(nodes.map((node) => [node.id, node])),
+    childrenByParent: children,
+    entries,
+    positionById,
+    subtreeEndById,
+    numberById,
+  };
+}
+/** Skip collapsed subtrees in one pass, without constructing every ancestor path. */
+export function visibleOutlineEntries(
+  index: OutlineIndex,
+  collapsed: ReadonlySet<string>,
+): OutlineEntry[] {
+  const result: OutlineEntry[] = [];
+  for (let cursor = 0; cursor < index.entries.length;) {
+    const entry = index.entries[cursor];
+    result.push(entry);
+    cursor = collapsed.has(entry.node.id)
+      ? index.subtreeEndById.get(entry.node.id) || cursor + 1
+      : cursor + 1;
+  }
+  return result;
+}
+
+/** The array determines sibling order; parentId determines the outline. */
+export function outlineEntries(
+  book: Book,
+  index?: OutlineIndex,
+): OutlineEntry[] {
+  return index?.entries || createOutlineIndex(book.nodes).entries;
 }
 
 /** All descendants in outline order, excluding the section itself. */
-export function descendants(book: Book, id: string): BookNode[] {
+export function descendants(
+  book: Book,
+  id: string,
+  index?: OutlineIndex,
+): BookNode[] {
+  if (index) {
+    const start = index.positionById.get(id);
+    return start === undefined
+      ? []
+      : index.entries
+          .slice(start + 1, index.subtreeEndById.get(id))
+          .map(({ node }) => node);
+  }
   const children = childrenByParent(book);
   const pending = [...(children.get(id) ?? [])].reverse();
   const result: BookNode[] = [];
@@ -469,8 +625,13 @@ export function descendants(book: Book, id: string): BookNode[] {
 }
 
 /** The enclosing sections from root to immediate parent. */
-export function ancestors(book: Book, id: string): BookNode[] {
-  const nodes = new Map(book.nodes.map((node) => [node.id, node]));
+export function ancestors(
+  book: Book,
+  id: string,
+  index?: OutlineIndex,
+): BookNode[] {
+  const nodes =
+    index?.nodesById || new Map(book.nodes.map((node) => [node.id, node]));
   let parent = nodes.get(id);
   const result: BookNode[] = [];
   const seen = new Set([id]);
@@ -559,19 +720,34 @@ export function canMoveNode(
   movingId: string,
   targetId: string | null,
   placement?: OutlineDropPlacement,
+  index?: OutlineIndex,
 ): boolean {
-  const moving = book.nodes.find((node) => node.id === movingId);
+  const moving =
+    index?.nodesById.get(movingId) ||
+    book.nodes.find((node) => node.id === movingId);
   if (!moving) return false;
   if (placement === "root") return true;
-  const target = book.nodes.find((node) => node.id === targetId);
+  const target =
+    index?.nodesById.get(targetId || "") ||
+    book.nodes.find((node) => node.id === targetId);
   if (!target || movingId === targetId) return false;
-  if (descendants(book, movingId).some((node) => node.id === targetId))
+  if (index) {
+    const start = index.positionById.get(movingId);
+    const targetPosition = index.positionById.get(targetId || "");
+    if (
+      start !== undefined &&
+      targetPosition !== undefined &&
+      targetPosition > start &&
+      targetPosition < (index.subtreeEndById.get(movingId) || 0)
+    )
+      return false;
+  } else if (descendants(book, movingId).some((node) => node.id === targetId))
     return false;
   if (placement === "inside" && moving.type !== "chapter") return false;
   // Parts remain at the top level. A before/after drop on a nested section
   // therefore places a part beside the target's enclosing root branch.
   if (moving.type === "part" && parentOf(target) !== null) {
-    const root = ancestors(book, target.id)[0];
+    const root = ancestors(book, target.id, index)[0];
     if (!root || root.id === movingId) return false;
   }
   return true;

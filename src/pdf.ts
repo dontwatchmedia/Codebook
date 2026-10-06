@@ -1,5 +1,10 @@
 import type { JSONContent } from "@tiptap/core";
-import { ancestors, outlineEntries, type Book } from "./model";
+import {
+  ancestors,
+  outlineEntries,
+  type Book,
+  type OutlineIndex,
+} from "./model";
 import { blockStyleCSS } from "./formatting";
 import { highlightedCode, toHTML } from "./export";
 import { generateNativePDF, saveNativePDF } from "./pdfNative";
@@ -293,12 +298,41 @@ export function estimatePDFPages(
   book: Book,
   input: Partial<PDFOptions> = {},
 ): number {
+  return measurePDFPages(book, input);
+}
+const estimateHeights = new WeakMap<
+  JSONContent,
+  { key: string; height: number }
+>();
+/** For immutable editor snapshots; reuse unchanged paragraph/list/table estimates. */
+export function cachedEstimatePDFPages(
+  book: Book,
+  input: Partial<PDFOptions> = {},
+  index?: OutlineIndex,
+): number {
+  return measurePDFPages(book, input, estimateHeights, index);
+}
+function measurePDFPages(
+  book: Book,
+  input: Partial<PDFOptions>,
+  cache?: WeakMap<JSONContent, { key: string; height: number }>,
+  index?: OutlineIndex,
+): number {
   const options = normalizePDFOptions(input);
   const pageWidth =
     (options.paper === "a4" ? 595.28 : 612) - PDF_MARGIN_INCHES * 144;
   const pageHeight =
     (options.paper === "a4" ? 841.89 : 792) - PDF_MARGIN_INCHES * 144;
+  const optionsKey = `${pageHeight}/${options.compactSpacing}`;
   const height = (node: JSONContent, width = pageWidth): number => {
+    const key = `${width}/${optionsKey}`;
+    const previous = cache?.get(node);
+    if (previous?.key === key) return previous.height;
+    const result = calculateHeight(node, width);
+    cache?.set(node, { key, height: result });
+    return result;
+  };
+  const calculateHeight = (node: JSONContent, width: number): number => {
     if (node.type === "image")
       return (
         Math.min(pageHeight * 0.85, points(node.attrs?.height, width * 0.5)) +
@@ -388,7 +422,7 @@ export function estimatePDFPages(
   };
   let used = options.includeTitle ? 65 : 0;
   let pages = 0;
-  const entries = outlineEntries(book);
+  const entries = outlineEntries(book, index);
   entries.forEach(({ node }, index) => {
     if (index && options.startChaptersOnNewPage) {
       pages += Math.max(1, Math.ceil(used / pageHeight));

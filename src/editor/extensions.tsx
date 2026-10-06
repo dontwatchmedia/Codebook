@@ -7,11 +7,11 @@ import {
   type NodeViewProps,
 } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
+import CodeBlock from "@tiptap/extension-code-block";
 import Image from "@tiptap/extension-image";
 import { TableKit } from "@tiptap/extension-table";
 import Placeholder from "@tiptap/extension-placeholder";
-import { lowlight } from "./highlighting";
+import { codeDecorations } from "./codeDecorations";
 import { Copy, Check, Hash, Code2 } from "lucide-react";
 import { useState } from "react";
 import { ImportedTextStyle, ImportedBlockStyle } from "./formatting";
@@ -119,7 +119,16 @@ function CodeView({ node, updateAttributes, editor }: NodeViewProps) {
     </NodeViewWrapper>
   );
 }
-const TechnicalCode = CodeBlockLowlight.extend({
+const TechnicalCode = CodeBlock.extend({
+  addProseMirrorPlugins() {
+    // CodeBlockLowlight's default plugin scans the whole document even when
+    // only the cursor moves. Keep its inherited code behavior, replacing only
+    // that highlighting plugin with immutable-node-cached decorations.
+    return [
+      ...(this.parent?.() || []),
+      codeDecorations(this.name, this.options.defaultLanguage),
+    ];
+  },
   addAttributes() {
     return {
       ...this.parent?.(),
@@ -152,7 +161,7 @@ const TechnicalCode = CodeBlockLowlight.extend({
           : false,
     };
   },
-}).configure({ lowlight, defaultLanguage: null });
+}).configure({ defaultLanguage: null });
 export const Callout = Node.create({
   name: "callout",
   group: "block",

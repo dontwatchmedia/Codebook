@@ -48,6 +48,44 @@ export const SearchHighlights = Extension.create({
                   }
                 : {}),
             };
+            if (!settings.query)
+              return { ...settings, decorations: DecorationSet.empty };
+            if (
+              !transaction.docChanged &&
+              settings.query === previous.query &&
+              settings.caseSensitive === previous.caseSensitive
+            ) {
+              // Navigation only changes two occurrences, not every highlight
+              // in a large chapter. Keep the rest of the decoration tree.
+              let decorations = previous.decorations;
+              for (const range of [
+                previous.activeRange,
+                settings.activeRange,
+              ]) {
+                if (!range) continue;
+                const existing = decorations
+                  .find(range.from, range.to)
+                  .filter(
+                    (decoration) =>
+                      decoration.from === range.from &&
+                      decoration.to === range.to,
+                  );
+                if (!existing.length) continue;
+                const active =
+                  range.from === settings.activeRange?.from &&
+                  range.to === settings.activeRange?.to;
+                decorations = decorations
+                  .remove(existing)
+                  .add(transaction.doc, [
+                    Decoration.inline(range.from, range.to, {
+                      class: active ? "search-match is-active" : "search-match",
+                      "data-search-match": "true",
+                      ...(active ? { "data-search-active": "true" } : {}),
+                    }),
+                  ]);
+              }
+              return { ...settings, decorations };
+            }
             const matches = findDocumentMatches(
               transaction.doc,
               settings.query,

@@ -6,6 +6,20 @@
 .outline-tree-content {
   padding-right: 2px;
 }
+.outline-virtual-list {
+  position: relative;
+}
+.outline-virtual-measure {
+  position: absolute;
+  width: 1px;
+  height: calc(26px * var(--outline-scale, 1) + 2px);
+  visibility: hidden;
+  pointer-events: none;
+}
+.outline-virtual-list > .outline-row,
+.outline-virtual-list > .outline-part {
+  min-height: 0;
+}
 
 .outline-row {
   display: flex;

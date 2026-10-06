@@ -238,6 +238,124 @@ test("Ctrl+F finds the first current-chapter match, traverses real split-mark an
   expect((await storedBook(page, book.title)).nodes).toEqual(book.nodes);
 });
 
+test("rapid query changes cancel stale results and never replace an older query", async ({
+  page,
+}) => {
+  const original = await openFixture(page);
+  await page.keyboard.press("Control+f");
+  const find = searchInput(page);
+  await find.fill("moon");
+  await expect(counter(page)).toContainText("1 of 6 matches");
+  await find.fill("Design paragraph");
+  await find.fill("nothing-matches-this");
+  await expect(
+    page.getByRole("button", { name: "Replace", exact: true }),
+  ).toBeDisabled();
+  await expect(counter(page)).toHaveText("No matches");
+  await expect(page.locator("[data-search-match]")).toHaveCount(0);
+  await find.fill("Design paragraph");
+  await expect(counter(page)).toContainText("60 matches");
+  await expect(page.locator(".project-find-group button")).toHaveCount(60);
+  await find.fill("moon");
+  await expect(counter(page)).toContainText("1 of 6 matches");
+  await expectMatch(page, "Gameplay", "moon");
+  await expect(find).toBeFocused();
+  expect(await storedBook(page, original.title)).toEqual(original);
+});
+
+test("manual chapter navigation during a pending query keeps the new chapter as the search origin", async ({
+  page,
+}) => {
+  await openFixture(page);
+  await page.keyboard.press("Control+f");
+  await searchInput(page).fill("moon");
+  await chapterRow(page, "Residents").click();
+  await expect(counter(page)).toContainText("1 of 6 matches");
+  await expectMatch(page, "Residents", "MOON");
+  await expect(searchInput(page)).toHaveValue("moon");
+  await page.getByRole("button", { name: "Next match", exact: true }).click();
+  await expectMatch(page, "Gameplay", "moon");
+});
+
+test("Enter and Shift+Enter typed before search finishes retain every move and cancel them when the query changes", async ({
+  page,
+}) => {
+  await openFixture(page);
+  const session = await page.context().newCDPSession(page);
+  await session.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+  await page.keyboard.press("Control+f");
+  const find = searchInput(page);
+  for (let repeat = 0; repeat < 4; repeat++) {
+    await chapterRow(page, "Gameplay").click();
+    await find.fill("");
+    await expect(counter(page)).toContainText("Search this project’s writing");
+    await find.fill("moon");
+    // Do not wait for results before sending the user's navigation intent.
+    await find.press("Enter");
+    await find.press("Enter");
+    await expect(counter(page)).toContainText("3 of 6 matches");
+    await expectMatch(page, "Gameplay", "MOON");
+    await expect(find).toBeFocused();
+
+    await find.fill("mo");
+    await find.press("Enter");
+    await find.fill("moon");
+    await expect(counter(page)).toContainText("1 of 6 matches");
+    await expectMatch(page, "Gameplay", "moon");
+
+    await find.fill("");
+    await expect(counter(page)).toContainText("Search this project’s writing");
+    await find.fill("moon");
+    await find.press("Shift+Enter");
+    await expect(counter(page)).toContainText("6 of 6 matches");
+    await expectMatch(page, "Residents", "MOON");
+    await expect(find).toBeFocused();
+  }
+});
+
+test("reopening Find refreshes cached ranges after editing with the panel closed", async ({
+  page,
+}) => {
+  const original = await openFixture(page);
+  const session = await page.context().newCDPSession(page);
+  await session.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+  const writing = page.getByRole("textbox", {
+    name: "Chapter manuscript",
+    exact: true,
+  });
+  for (let repeat = 0; repeat < 4; repeat++) {
+    await page.keyboard.press("Control+f");
+    await searchInput(page).fill("moon");
+    await expect(counter(page)).toContainText("1 of 6 matches");
+    await page.getByRole("button", { name: "Close find", exact: true }).click();
+    await writing.press("Control+Home");
+    await page.keyboard.insertText("New introduction. ");
+    await expect(writing).toContainText("New introduction. A gentle moon");
+    if (repeat < 3) {
+      await writing.press("Control+z");
+      await expect(writing).not.toContainText("New introduction.");
+    }
+  }
+  await page.keyboard.press("Control+f");
+  await expect(searchInput(page)).toHaveValue("moon");
+  await expect(counter(page)).toContainText("1 of 6 matches");
+  await expectMatch(page, "Gameplay", "moon");
+  await page
+    .getByRole("textbox", { name: "Replace with", exact: true })
+    .fill("sun");
+  await page.getByRole("button", { name: "Replace", exact: true }).click();
+  await expect(writing).toContainText(
+    "New introduction. A gentle sun follows paths.",
+  );
+  await expect
+    .poll(async () =>
+      plainText(
+        chapterDocument(await storedBook(page, original.title), "gameplay"),
+      ),
+    )
+    .toContain("New introduction. A gentle sun follows paths.");
+});
+
 test("grouped bible results reveal collapsed ancestors and preserve the query and each section's last match during manual navigation", async ({
   page,
 }) => {

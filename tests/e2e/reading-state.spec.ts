@@ -267,8 +267,16 @@ test("a remembered caret outside a shortened document is safely clamped", async 
     .getByRole("button", { name: `Open ${book.title}`, exact: true })
     .click();
   const editor = page.getByRole("textbox", { name: "Section content" });
-  await editor.focus();
+  const focusedOffset = await editor.evaluate((element) => {
+    element.focus();
+    return window.getSelection()?.anchorOffset;
+  });
+  expect(focusedOffset).toBe("Shortened section.".length);
   await page.keyboard.insertText(" Resumed.");
   await expect(editor).toHaveText("Shortened section. Resumed.");
+  await page.getByRole("button", { name: "Reading preview", exact: true }).focus();
+  await editor.locator("p").click({ position: { x: 1, y: 8 } });
+  await page.keyboard.insertText("Pointer. ");
+  await expect(editor).toHaveText("Pointer. Shortened section. Resumed.");
   expect(errors).toEqual([]);
 });

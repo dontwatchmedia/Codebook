@@ -41,7 +41,7 @@ import {
   readCollapsedSections,
   saveCollapsedSections,
 } from "./outlinePreferences";
-import { estimatePDFPages, readPDFOptions, type PDFOptions } from "./pdf";
+import { cachedEstimatePDFPages, readPDFOptions, type PDFOptions } from "./pdf";
 import InlineRename from "./components/InlineRename";
 import SidebarResizer, {
   useResizableSidebar,
@@ -72,7 +72,9 @@ import Manuscript from "./editor/Manuscript";
 import FindPanel from "./components/FindPanel";
 import { readLastChapter } from "./editor/readingState";
 import {
-  bookWords,
+  cachedBookWords as bookWords,
+  cachedDocumentStats,
+  createOutlineIndex,
   chapters,
   docText,
   emptyDoc,
@@ -89,7 +91,6 @@ import {
   now,
   uid,
   validateBook,
-  wordCount,
   type Book,
   type BookNode,
   type Chapter,
@@ -206,6 +207,8 @@ export default function App() {
     [exportFormat, setExportFormat] = useState("markdown");
   const booksRef = useRef(books),
     dirty = useRef(new Map<string, Book>()),
+    pendingSaves = useRef(0),
+    savedRevisions = useRef(new Map<string, string>()),
     timer = useRef<ReturnType<typeof setTimeout> | null>(null),
     editorRef = useRef<Editor | null>(null),
     importRef = useRef<HTMLInputElement>(null),
@@ -217,9 +220,27 @@ export default function App() {
     chapter =
       book &&
       (chapters(book).find((c) => c.id === chapterId) || chapters(book)[0]);
+  const outlineIndex = useMemo(
+    () => createOutlineIndex(book?.nodes || []),
+    [book?.nodes],
+  );
   const pageEstimate = useMemo(
-    () => (book ? estimatePDFPages(book, pdfOptions) : 0),
-    [book, pdfOptions],
+    () => (book ? cachedEstimatePDFPages(book, pdfOptions, outlineIndex) : 0),
+    [book, pdfOptions, outlineIndex],
+  );
+  const excludedParents = useMemo(
+    () =>
+      new Set(
+        chapter && book
+          ? [
+              chapter.id,
+              ...descendants(book, chapter.id, outlineIndex).map(
+                (node) => node.id,
+              ),
+            ]
+          : [],
+      ),
+    [outlineIndex, chapter?.id],
   );
   const exactPageCount =
     pdfCount?.bookId === book?.id &&
@@ -260,19 +281,47 @@ export default function App() {
   });
   async function flush() {
     if (timer.current) clearTimeout(timer.current);
-    const batch = Array.from(dirty.current.values());
+    const batch = Array.from(dirty.current.values()).filter((candidate) =>
+      booksRef.current.some((book) => book.id === candidate.id),
+    );
     dirty.current.clear();
     if (!batch.length) return;
+    pendingSaves.current++;
     try {
-      for (const b of batch) await saveBook(b);
-      if (!dirty.current.size) setSaved("Saved on this device");
+      for (const b of batch) {
+        await saveBook(b);
+        const acknowledged = savedRevisions.current.get(b.id) || "";
+        const revision = acknowledged > b.modified ? acknowledged : b.modified;
+        savedRevisions.current.set(b.id, revision);
+        const pending = dirty.current.get(b.id);
+        if (pending && pending.modified <= revision) dirty.current.delete(b.id);
+      }
     } catch (e) {
-      for (const b of batch)
-        if (!dirty.current.has(b.id)) dirty.current.set(b.id, b);
-      setSaved("Save failed — retry");
-      notify(
-        `Save failed: ${String(e)}. Recovery data is retained where available. Export a project copy now.`,
-      );
+      let retryNeeded = false;
+      for (const b of batch) {
+        // A newer flush may already have taken this project's latest edit out
+        // of dirty. Never put an older failed snapshot back in its place.
+        const latest = booksRef.current.find((book) => book.id === b.id);
+        if (
+          !latest ||
+          (savedRevisions.current.get(b.id) || "") >= latest.modified
+        )
+          continue;
+        const pending = dirty.current.get(b.id);
+        if (!pending || pending.modified < latest.modified)
+          dirty.current.set(b.id, latest);
+        retryNeeded = true;
+      }
+      if (retryNeeded) {
+        setSaved("Save failed — retry");
+        notify(
+          `Save failed: ${String(e)}. Recovery data is retained where available. Export a project copy now.`,
+        );
+      }
+    } finally {
+      pendingSaves.current--;
+      if (!pendingSaves.current && !dirty.current.size)
+        setSaved("Saved on this device");
     }
   }
   function updateBook(next: Book) {
@@ -289,7 +338,7 @@ export default function App() {
     setBooks(list);
     dirty.current.set(changed.id, changed);
     setSaved("Saving…");
-    void stageBook(changed).catch(() =>
+    void stageBook(changed, previous).catch(() =>
       notify(
         "Recovery could not be written. Keep the app open until the main save finishes, or export a project copy.",
       ),
@@ -401,7 +450,7 @@ export default function App() {
     };
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
-  }, [book]);
+  }, [book?.id]);
   function openBook(b: Book) {
     setActiveId(b.id);
     setCollapsed(
@@ -586,7 +635,7 @@ export default function App() {
       : []),
     { label: "Preferences", run: () => setDialog("preferences") },
   ];
-  const words = chapter ? wordCount(chapter.document) : 0;
+  const words = chapter ? cachedDocumentStats(chapter.document).words : 0;
   if (loading)
     return (
       <div className="loading">
@@ -897,6 +946,7 @@ export default function App() {
                 >
                   <OutlineTree
                     book={book}
+                    index={outlineIndex}
                     activeId={chapter?.id || ""}
                     collapsed={collapsed}
                     onToggle={(id) =>
@@ -982,14 +1032,16 @@ export default function App() {
                     title={
                       chapter
                         ? [
-                            ...ancestors(book, chapter.id).map((n) => n.title),
+                            ...ancestors(book, chapter.id, outlineIndex).map(
+                              (n) => n.title,
+                            ),
                             chapter.title,
                           ].join(" / ")
                         : ""
                     }
                   >
                     {chapter &&
-                      ancestors(book, chapter.id).map((n) => (
+                      ancestors(book, chapter.id, outlineIndex).map((n) => (
                         <span className="breadcrumb-parent" key={n.id}>
                           <button
                             onClick={() =>
@@ -1235,18 +1287,14 @@ export default function App() {
                         }}
                       >
                         <option value="">Top level</option>
-                        {outlineEntries(book)
-                          .filter(
-                            ({ node }) =>
-                              node.id !== chapter.id &&
-                              !descendants(book, chapter.id).some(
-                                (child) => child.id === node.id,
-                              ),
-                          )
+                        {outlineEntries(book, outlineIndex)
+                          .filter(({ node }) => !excludedParents.has(node.id))
                           .map(({ node }) => (
                             <option key={node.id} value={node.id}>
                               {[
-                                ...ancestors(book, node.id).map((n) => n.title),
+                                ...ancestors(book, node.id, outlineIndex).map(
+                                  (n) => n.title,
+                                ),
                                 node.title,
                               ].join(" / ")}
                             </option>
@@ -1669,10 +1717,12 @@ export default function App() {
                   {bible ? "Parent section" : "Parent chapter or part"}
                   <select name="parent" defaultValue={newParentId || ""}>
                     <option value="">Top level</option>
-                    {outlineEntries(book).map(({ node }) => (
+                    {outlineEntries(book, outlineIndex).map(({ node }) => (
                       <option key={node.id} value={node.id}>
                         {[
-                          ...ancestors(book, node.id).map((n) => n.title),
+                          ...ancestors(book, node.id, outlineIndex).map(
+                            (n) => n.title,
+                          ),
                           node.title,
                         ].join(" / ")}
                       </option>
@@ -1946,7 +1996,7 @@ export default function App() {
                         <strong>{c.title}</strong>
                         {bible && (
                           <small>
-                            {ancestors(book, c.id)
+                            {ancestors(book, c.id, outlineIndex)
                               .map((n) => n.title)
                               .join(" / ") || "Top level"}
                           </small>

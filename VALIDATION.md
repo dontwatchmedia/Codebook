@@ -1,4 +1,4 @@
-# CodeBook 0.2.10 validation
+# CodeBook 0.2.11 validation
 
 Validated on Windows with Node 24, Microsoft Edge, Rust 1.98.1, and the native Tauri/WebView2 runtime.
 
@@ -7,10 +7,10 @@ Validated on Windows with Node 24, Microsoft Edge, Rust 1.98.1, and the native T
 | Check                                                                      | Result           |
 | -------------------------------------------------------------------------- | ---------------- |
 | TypeScript and production Vite build                                       | Pass             |
-| Document, Markdown, clipboard, hierarchy, emoji, export, and storage tests | 201 passed       |
-| Browser workflows in Microsoft Edge                                        | 52 passed        |
-| Rust atomic replacement, path validation, recovery, preferences and PDF    | 12 passed        |
-| Native application integration                                             | 41 checks passed |
+| Document, Markdown, clipboard, hierarchy, emoji, export, and storage tests | 225 passed       |
+| Browser workflows in Microsoft Edge                                        | 60 passed        |
+| Rust atomic replacement, path validation, recovery, preferences and PDF    | 20 passed        |
+| Native application integration                                             | 46 checks passed |
 
 The permanent clipboard test uses the specification's exact Hello World structure: H2, paragraph, C++ code, paragraph with inline code, H3, numbered list. It checks language, whitespace, and inline semantics, plus Markdown export/import round trips.
 
@@ -38,7 +38,7 @@ PDF unit and browser checks cover supported source fonts, point sizes, marks, li
 
 `node scripts/native-outline-pdf-smoke.mjs CodeBook.exe` adds seven native checks: independent outline zoom; collapse/reopen and unchanged project data; real Letter PDF generation and atomic save; A4 regeneration; cache reuse and invalidation after editing; missing-image error recovery and hidden-renderer cleanup; and absence of JavaScript runtime errors. The native renderer waits for fonts and images, preserves selectable text, and runs in an unfocused hidden window with document scripts disabled. The test substitutes only the OS Save As path choice with a path inside its isolated test folder; the actual Windows PDF renderer and native binary write run normally.
 
-The final fixture produced five-page Letter and A4 PDFs and a nine-page A4 PDF after editing. Independent PDF extraction verified readable text, Arial regular/bold/italic and Consolas font resources, 11pt body and 22pt heading sizes within renderer rounding, an embedded image, an active link, and no text outside the page boundaries. All ten Letter/A4 page renders were visually inspected for pagination, page numbers, tables, code, and layout. The final renders matched the inspected images exactly. The final native reports are `test-results/native-1791167312976/`, `test-results/native-search-1791167345543/`, and `test-results/native-outline-pdf-1791167350241/`.
+The PDF regression fixture produces five-page Letter and A4 PDFs and a nine-page A4 PDF after editing. Independent PDF extraction verified readable text, Arial regular/bold/italic and Consolas font resources, 11pt body and 22pt heading sizes within renderer rounding, an embedded image, an active link, and no text outside the page boundaries. All ten Letter/A4 page renders were visually inspected for pagination, page numbers, tables, code, and layout. The final renders matched the inspected images exactly. Those visual checks were established in 0.2.10. The 0.2.11 regression PDFs retain the exact extracted text, page counts, and page bounds. Final native reports are `test-results/native-1791263441294/`, `test-results/native-search-1791263436188/`, `test-results/native-outline-pdf-1791263473189/`, and `test-results/native-delta-recovery-1791263433089/`.
 
 Smart Find unit checks cover real document positions across formatting marks, hard breaks, inline objects, nested lists, tables and code, Unicode case folding without offset drift, literal non-overlapping queries, outline traversal order, and transient highlights that never enter saved content or Undo. Browser workflows exercise the first match in the current chapter, forward/backward wrapping across nested chapters, full ancestor paths and snippets, revealing collapsed parents, query and per-section occurrence retention, repeated Ctrl+F focus, the advanced-search handoff, and distant-match scrolling while Find retains keyboard focus. Replace and Replace all are limited to the current chapter or section and are checked against saved documents with Undo/Redo and reload.
 
@@ -98,6 +98,50 @@ The first native crash test exposed WebView2's delayed browser-storage persisten
 
 The first 0.2.8 native run timed out waiting for the existing sidebar reset to persist, after its visual width had reset. A repeat of the complete workflow with the same executable passed all 28 checks. The initial failure did not capture enough evidence to establish a cause; the harness now saves a screenshot and diagnostic report on failure.
 
+## Large-project performance
+
+Measured on October 5, 2026, using the Windows release executable, WebView2, an AMD Ryzen 9 9950X (16 cores / 32 threads), and 64 GB RAM. Every project was synthetic and isolated from the user's library. Fixtures contain Arial 11pt paragraphs, split formatting runs, and bold marks: about 8.8 MB of minified JSON at 172,000 words and 35.7–36.8 MB at 700,000 words, before the native pretty-printed snapshot. These are writing/navigation workloads, not page-count or image-load benchmarks.
+
+Typing latency is measured from the keydown event to the second animation frame, as a proxy for input-to-paint responsiveness. Each run types 11 characters at 35 ms intervals, waits for actual native persistence, switches sections four times, searches the project, then searches a common word and types seven more characters after closing Find. The table compares the same synthetic inputs in 0.2.10 and the final 0.2.11 executable; it reports individual runs, not a multi-machine average.
+
+| Workload | 0.2.10 median typing | 0.2.11 median typing | 0.2.11 p95 typing | 0.2.11 section switches |
+| --- | ---: | ---: | ---: | ---: |
+| 172,000 words / 86 sections | 120.3 ms | 8.4 ms | 14.5 ms | 62–75 ms |
+| 700,000 words / 350 sections | 488.3 ms | 6.3 ms | 13.5 ms | 60–67 ms |
+| 700,000 words / 2,000 sections | 696.5 ms | 7.6 ms | 14.6 ms | 50–55 ms |
+| 700,000 words / 65 sections, active section 60,000 words | 478.5 ms | 14.1 ms | 76.7 ms | 167–417 ms |
+
+The first three final typing runs recorded no main-thread tasks of 50 ms or longer through autosave. The 60,000-word section recorded one 55 ms task during its first edit; subsequent typing after Find closed had a 15.7 ms median and 26.5 ms maximum with no long tasks. Opening that section initially took 590 ms. Very long individual chapters still incur rendering and initial schema-normalization work; this release does not make every operation instantaneous.
+
+The 350-section growth case previously sent about 35.8 MB to native recovery per keystroke. Its final build sent a 68 KB initial normalization patch, then 477–486 bytes per keystroke and a 66-byte checkpoint request. The native checkpoint took about 273 ms on a worker while the editor remained responsive. The separate canonical-document recovery fixture avoids normalization and sends less than 1 KB even for the first edit.
+
+The 2,000-section outline kept 30 rows mounted in the benchmark window, compared with all 2,000 in 0.2.10. Its initial chapter opening fell from 1,169 ms to 212 ms. Far navigation, nesting, and renaming are checked separately in the large-outline interaction tests.
+
+Final initial project searches completed in 236 ms (current), 335 ms (growth), 856 ms (wide), and 417 ms (long). These times include a deliberate 120 ms debounce and yielding between sections; first-search completion is sometimes slower than the old synchronous scan, in exchange for cancellation and leaving time for interaction. The common-word query counted 43,000–176,000 occurrences in 223–380 ms while mounting at most 60 result buttons. Typing after closing Find remained fast: 6.3–15.7 ms median across the four cases. Initial library readiness was about 1.3–2.4 seconds.
+
+All four runs verified native autosave, repeated chapter switching, project-wide match counts, retained new writing, exact unchanged documents in every other section, and absence of runtime errors. Raw reports and screenshots are local under `test-results/performance-release-current-1791263557313/`, `performance-release-growth-1791263563618/`, `performance-release-wide-1791263572450/`, and `performance-release-long-1791263581748/` (all under `test-results/`). Baseline reports use `performance-baseline-current-1791263183449/`, `performance-baseline-growth-1791262051627/`, `performance-baseline-wide-1791262245603/`, and `performance-baseline-long-1791262547077/`.
+
+Reproduce any scenario with:
+
+```powershell
+node scripts/performance-smoke.mjs CodeBook.exe current
+node scripts/performance-smoke.mjs CodeBook.exe growth
+node scripts/performance-smoke.mjs CodeBook.exe wide
+node scripts/performance-smoke.mjs CodeBook.exe long
+```
+
+The script creates its own project/profile, verifies saved writing, records timings and payloads, and terminates only the process it launched. Results vary with hardware, background work, chapter size, formatting complexity, code blocks, images, and display refresh rate. The browser development preview retains its separate browser-storage implementation.
+
+## Incremental saving and responsiveness regressions
+
+The Windows save path now sends versioned document deltas, persists an atomic recovery record before acknowledging the edit, and writes full snapshots on a background worker. Older checkpoints cannot remove newer recovery records; mismatched base revisions require a resync. Native edits no longer duplicate the entire project in synchronous browser storage. Eight new Rust checks cover patch replay, invalid paths, failed journal writes, failed checkpoints, legacy recovery, deletion, revision conflicts, and restart during checkpoint cleanup.
+
+`node scripts/native-delta-recovery-smoke.mjs CodeBook.exe` adds five native workflows using a synthetic 197,120-word / 200-section project. Actual keystrokes sent 758–771 bytes each, including the first edit; a checkpoint request was 67 bytes. Tests hold the checkpoint, force-terminate the process, recover the pending writing, compare untouched chapters and formatting exactly, edit while an earlier save is queued, and reopen the final result. An injected-error test rejects a checkpoint plus newer staging requests across overlapping saves, clicks Retry, and verifies that the newest visible text—not an older failed snapshot—reaches disk and survives restart. The native browser-storage journal remains empty.
+
+Immutable-node tests compare cached JSON with the editor's full serialization, preserve unmodified object identity, and check selective formatting and code changes. Word counts, validation, and PDF estimates reuse unchanged subtrees; public helpers still read fresh values from mutable caller data. Outline tests use 1,202 sections, keep fewer than 80 rows mounted, and exercise far keyboard navigation, F2 renaming, emoji, zoom, offscreen search/reveal, drag retention while scrolling, nesting, and Escape cancellation without a dragend event.
+
+Search regression tests cover cancellation of obsolete queries, immediate Enter/Shift+Enter during a pending query, manual chapter navigation while searching, and reopening Find after closed-panel edits. Repeated cases under 4× CPU throttling verify that closing Find and immediately using Ctrl+Home/End does not type over the previous match. The first complete regression runs exposed caret/focus and pending-Enter timing bugs; they were fixed before final verification. The final reading/search subset passed 36 runs (12 cases × three repeats), including throttled interaction loops.
+
 ## Visual review
 
 Dark mode was reviewed on the bookshelf, editor, code blocks, inspector, and export dialog. The appearance workflow checks switching from both main screens, preference synchronization, light/sepia fallback, and persistence across reloads. Native integration additionally confirms the dark preference survives process termination and restart. The desktop stores the appearance in a flushed `.preferences.json` file inside the library directory, independent of WebView2's deferred browser-storage writes.
@@ -121,7 +165,7 @@ Reviewed Smart Find at the minimum 960 × 650 browser window with a wide outline
 ## Limits of these results
 
 - A process-crash test is not a hardware power-loss test.
-- The specification's 500,000-word and thousands-of-assets performance targets were not benchmarked.
+- Typing and navigation were benchmarked up to 700,000 words and 2,000 sections as detailed above. Thousands of embedded images and multi-thousand-page PDF export have not been benchmarked; these results are not a universal no-lag guarantee.
 - External clipboard applications were represented by regression fixtures; each named application was not manually tested.
 - This release does not include the roadmap's EPUB, AI, cloud, collaboration, or advanced publishing features.
 - Explorer-style file drops are exercised using WebView2’s drag protocol with real files, rather than manually automating a File Explorer gesture. Internal native chapter dragging uses pointer input.

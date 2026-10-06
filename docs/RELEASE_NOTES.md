@@ -1,16 +1,26 @@
-# CodeBook 0.2.10 — Compact outline and formatted PDF export
+# CodeBook 0.2.11 — Faster writing in large projects
 
-Give the outline more room for your sections, adjust its text size independently, and export the complete project as a formatted PDF.
+Keep writing and moving between sections as your technical book or game design bible grows. This release removes whole-project work from the desktop typing path.
 
 ## Download
 
 - **[CodeBook.exe](https://github.com/dontwatchmedia/Codebook/releases/latest/download/CodeBook.exe)** — the current portable Windows executable.
-- **CodeBook-0.2.10-Windows.zip** — the same executable with a quick-start guide, README, validation notes, licenses, and SHA-256 checksum, available in the **[latest release](https://github.com/dontwatchmedia/Codebook/releases/latest)**.
+- **CodeBook-0.2.11-Windows.zip** — the same executable with a quick-start guide, README, validation notes, licenses, and SHA-256 checksum, available in the **[latest release](https://github.com/dontwatchmedia/Codebook/releases/latest)**.
 - **CodeBook.exe.sha256** — checksum for the executable.
 
 Download the EXE directly, or extract the ZIP and double-click CodeBook.exe. No Node.js, Rust, login, or development server is needed to use it. Requires 64-bit Windows 10/11 and Microsoft Edge WebView2. The executable is unsigned.
 
-## New in 0.2.10
+## New in 0.2.11
+
+- Desktop typing sends small changes to a durable recovery journal instead of serializing the entire book for every key. Full snapshots run on a background worker; backups and recovery remain available.
+- Unchanged editor content, font validation, word counts, page estimates, code highlighting, and search results are reused. Moving the caret no longer rescans all the writing.
+- Large outlines render a window of visible rows. Keyboard navigation, renaming, emoji, nested drag-and-drop, offscreen search jumps, and outline zoom work across thousands of sections.
+- Find yields between sections, cancels obsolete queries, and stops scanning when closed. Current-section-first results, replace, and remembered reading positions remain intact.
+- The Saved indicator waits for queued saves, including edits made during an earlier save. Failed overlapping saves retry the newest visible writing.
+- Fast Enter/Shift+Enter presses are retained while Find searches. Ctrl+Home/End moves the caret immediately, including after closing Find.
+- Tested against synthetic 172,000- and 700,000-word projects, up to 2,000 sections, and a 60,000-word chapter. See [validation and performance measurements](../VALIDATION.md#large-project-performance) for hardware, timings, recovery checks, and limits.
+
+## Included from 0.2.10
 
 - The project title sits beside **Your bookshelf**, with compact chapter and nested-section rows. **Ctrl+mouse wheel** over the left panel scales its text and emoji from **80% to 200%**, independently of writing zoom. The minus/plus controls and percentage reset are also available.
 - **Expand all sections** and **Collapse all sections** complement the individual branch arrows. **Tools** collapses the lower add/import/progress/help area. Outline zoom, collapsed branches, and the Tools choice are remembered locally.
@@ -108,6 +118,6 @@ The existing editor remains available: rich text, formatted paste, syntax-highli
 
 ## Validation and scope
 
-See **[VALIDATION.md](../VALIDATION.md)** for the checks performed on this build and their limits. Very large projects with thousands of sections have not been benchmarked. Progress tracking records your choices; it does not inspect a game's source or verify feature completion.
+See **[VALIDATION.md](../VALIDATION.md)** for the checks performed on this build and their limits. Synthetic writing projects were benchmarked up to 700,000 words and 2,000 sections. Very long individual chapters still take time to render; image-heavy projects and multi-thousand-page PDF exports have not been benchmarked. Progress tracking records your choices; it does not inspect a game's source or verify feature completion.
 
 This package contains only the current executable and supporting documentation. Previous executable copies and user projects are excluded. EPUB, DOCX, cloud sync, AI, and collaboration are not included in this early release.

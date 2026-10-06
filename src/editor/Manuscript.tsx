@@ -27,10 +27,12 @@ import {
 } from "lucide-react";
 import { extensions } from "./extensions";
 import { formatMarkdown } from "./formatMarkdown";
+import { serializeDocument } from "./runtime";
+import { useToolbarState } from "./useToolbarState";
 import { clipboardHTML, NATIVE_MIME } from "../clipboard";
 import { validateDocument, type Chapter } from "../model";
 import { DOMSerializer } from "@tiptap/pm/model";
-import { TextSelection } from "@tiptap/pm/state";
+import { Selection, TextSelection } from "@tiptap/pm/state";
 import {
   readReadingState,
   rememberChapter,
@@ -61,8 +63,7 @@ export default function Manuscript({
   writingZoom,
   notify,
 }: Props) {
-  const [, redraw] = useState(0),
-    [slash, setSlash] = useState(false),
+  const [slash, setSlash] = useState(false),
     [link, setLink] = useState<string | null>(null);
   const file = useRef<HTMLInputElement>(null),
     paperScroll = useRef<HTMLDivElement>(null),
@@ -72,15 +73,18 @@ export default function Manuscript({
     extensions: extensions(),
     content: chapter.document,
     editable: !preview,
+    shouldRerenderOnTransaction: false,
+    onCreate: ({ editor }) => {
+      serializeDocument(editor.state.doc, chapter.document);
+    },
     onUpdate: ({ editor }) => {
-      callback.current(editor.getJSON());
+      callback.current(serializeDocument(editor.state.doc));
       const { $from } = editor.state.selection;
       setSlash(
         $from.parent.type.name === "paragraph" &&
           $from.parent.textContent.startsWith("/"),
       );
     },
-    onTransaction: () => redraw((v) => v + 1),
     editorProps: {
       attributes: {
         class: "manuscript",
@@ -88,6 +92,26 @@ export default function Manuscript({
         role: "textbox",
         "aria-multiline": "true",
         spellcheck: "true",
+      },
+      handleKeyDown(view, event) {
+        if (
+          !(event.ctrlKey || event.metaKey) ||
+          event.altKey ||
+          (event.key !== "Home" && event.key !== "End")
+        )
+          return false;
+        // Make the intended document navigation explicit. Otherwise a browser
+        // Ctrl+Home immediately after focus can be mistaken for a focus reset
+        // by ProseMirror's 200ms DOM-selection safeguard.
+        const edge =
+          event.key === "Home"
+            ? Selection.atStart(view.state.doc)
+            : Selection.atEnd(view.state.doc);
+        const selection = event.shiftKey
+          ? TextSelection.between(view.state.selection.$anchor, edge.$head)
+          : edge;
+        view.dispatch(view.state.tr.setSelection(selection).scrollIntoView());
+        return true;
       },
       handlePaste(view, event) {
         if (view.state.selection.$from.parent.type.name === "codeBlock")
@@ -130,6 +154,14 @@ export default function Manuscript({
         return false;
       },
       handleDOMEvents: {
+        focus(view, event) {
+          // A plain DOM/keyboard focus otherwise waits 20ms for ProseMirror to
+          // restore its selection. Fast typing can land at the browser's
+          // default start before that timer runs. Sync now, without scrolling
+          // or changing the document; pointer placement still follows normally.
+          if (event.target === view.dom) view.focus();
+          return false;
+        },
         copy(view, event) {
           if (view.state.selection.empty || !event.clipboardData) return false;
           const slice = view.state.selection.content();
@@ -154,6 +186,7 @@ export default function Manuscript({
       },
     },
   });
+  const toolbar = useToolbarState(editor);
   function insertImage(image: File) {
     if (image.size > 8 * 1024 * 1024) {
       notify("Please choose an image smaller than 8 MB.");
@@ -343,23 +376,19 @@ export default function Manuscript({
               <Undo2 />,
               () => editor.chain().focus().undo().run(),
               false,
-              !editor.can().undo(),
+              !toolbar.undo,
             )}
             {tool(
               "Redo (Ctrl+Y)",
               <Redo2 />,
               () => editor.chain().focus().redo().run(),
               false,
-              !editor.can().redo(),
+              !toolbar.redo,
             )}
           </div>
           <select
             aria-label="Paragraph style"
-            value={
-              editor.isActive("heading")
-                ? `h${editor.getAttributes("heading").level}`
-                : "p"
-            }
+            value={toolbar.paragraph}
             onChange={(e) =>
               e.target.value === "p"
                 ? editor.chain().focus().setParagraph().run()
@@ -386,25 +415,25 @@ export default function Manuscript({
               "Bold (Ctrl+B)",
               <Bold />,
               () => editor.chain().focus().toggleBold().run(),
-              editor.isActive("bold"),
+              toolbar.bold,
             )}
             {tool(
               "Italic (Ctrl+I)",
               <Italic />,
               () => editor.chain().focus().toggleItalic().run(),
-              editor.isActive("italic"),
+              toolbar.italic,
             )}
             {tool(
               "Underline (Ctrl+U)",
               <Underline />,
               () => editor.chain().focus().toggleUnderline().run(),
-              editor.isActive("underline"),
+              toolbar.underline,
             )}
             {tool(
               "Strikethrough",
               <Strikethrough />,
               () => editor.chain().focus().toggleStrike().run(),
-              editor.isActive("strike"),
+              toolbar.strike,
             )}
           </div>
           <div className="tool-group">
@@ -412,13 +441,13 @@ export default function Manuscript({
               "Inline code",
               <Code />,
               () => editor.chain().focus().toggleCode().run(),
-              editor.isActive("code"),
+              toolbar.code,
             )}
             {tool(
               "Code block",
               <Code2 />,
               () => editor.chain().focus().toggleCodeBlock().run(),
-              editor.isActive("codeBlock"),
+              toolbar.codeBlock,
             )}
           </div>
           <div className="tool-group">
@@ -426,19 +455,19 @@ export default function Manuscript({
               "Bulleted list",
               <List />,
               () => editor.chain().focus().toggleBulletList().run(),
-              editor.isActive("bulletList"),
+              toolbar.bulletList,
             )}
             {tool(
               "Numbered list",
               <ListOrdered />,
               () => editor.chain().focus().toggleOrderedList().run(),
-              editor.isActive("orderedList"),
+              toolbar.orderedList,
             )}
             {tool(
               "Blockquote",
               <Quote />,
               () => editor.chain().focus().toggleBlockquote().run(),
-              editor.isActive("blockquote"),
+              toolbar.blockquote,
             )}
           </div>
           <div className="tool-group">
@@ -446,7 +475,7 @@ export default function Manuscript({
               "Insert link (Ctrl+K)",
               <Link />,
               () => setLink(editor.getAttributes("link").href || ""),
-              editor.isActive("link"),
+              toolbar.link,
             )}
             {tool("Insert image", <ImagePlus />, () => file.current?.click())}
             {tool("Insert table", <Table2 />, () =>
@@ -463,7 +492,7 @@ export default function Manuscript({
             className="format-markdown-button"
             aria-label="Format Markdown"
             title={`Format selected text as Markdown, or the whole ${systemBible ? "section" : "chapter"} when nothing is selected. Undo restores the original text.`}
-            disabled={editor.isEmpty}
+            disabled={toolbar.empty}
             onPointerDown={(event) => event.preventDefault()}
             onClick={() => {
               try {
@@ -485,7 +514,7 @@ export default function Manuscript({
           </button>
         </div>
       )}
-      {editor.isActive("table") && !preview && (
+      {toolbar.table && !preview && (
         <div className="table-toolbar">
           <span>Table</span>
           {tool(

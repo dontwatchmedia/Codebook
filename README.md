@@ -109,6 +109,10 @@ To use an existing book as a system bible, open its settings beside the project 
 - 20 language choices, including C++, Python, JavaScript, TypeScript, Rust, Go, Java, C#, SQL, Bash, and PowerShell.
 - Editable code filenames, optional line numbers, indentation, and a copy button.
 - HTML, Markdown, plain-text, and native CodeBook clipboard support.
+- ChatGPT Copy-button Markdown and selected rich HTML use compact Arial typography when the source provides no font, while explicitly formatted Google Docs text keeps its original typography. Headings, selective emphasis, lists, tables, and code blocks remain editable.
+- Inline and display equations render offline and retain their LaTeX source. Double-click an equation to edit it. HTML and PDF exports include equation fonts; Markdown exports keep the source notation. **Format Markdown** can convert literal equations already pasted into a paragraph.
+- Recognizable cards, grids, and simple flow rows in rich HTML become editable callouts and tables. Clipboard content must include that structure; CodeBook cannot reconstruct a visual that the source copied as plain text.
+- ChatGPT full-size image links copied as ordinary links become images with retained captions and source links. Flattened copies keep their line breaks. These remote images require an available source URL and an internet connection; omitted graphs and flattened table layouts cannot be recovered from text alone.
 - Google Docs paste retains supported fonts, point sizes, selective bold, colors, alignment, paragraph spacing, and nested lists.
 - Imported typography stays with your project after saving and reopening. HTML and `.codebook` exports retain it; Markdown keeps semantic formatting such as headings, bold, and lists.
 - Sanitization of imported HTML to remove scripts and unsafe markup.
@@ -200,11 +204,11 @@ Locally inserted image files are embedded in the project. Images pasted as remot
 
 ## Current release and roadmap
 
-CodeBook **0.2.11** optimizes large manuscripts with incremental native saving, cached statistics and editor updates, a virtualized outline, and cancellable searches that reuse unchanged sections. Compact outline controls, word/page totals, and formatted PDF export remain available. It includes Smart Find, remembered reading positions, Format Markdown, a resizable outline, multiple Markdown-file import with Google Docs-style typography, nested drag-and-drop, 3,773 searchable offline emoji, writing zoom, eight color themes, and double-click title renaming.
+CodeBook **0.2.12** improves pasting from ChatGPT, including Copy-button Markdown, source typography, inline/display equations, INI code, and supported rich-HTML cards and columns. It retains incremental native saving, cached editor updates, virtualized outlines, Smart Find, remembered reading positions, compact outline controls, word/page totals, formatted PDF export, Format Markdown, Markdown-file import, nested drag-and-drop, searchable emoji, writing zoom, and eight color themes.
 
 **Available now:** deeply nested sections, topic icons, section progress, rich-text editing, code highlighting, formatted paste, dark mode, local autosave and recovery, book organization, search, and PDF/Markdown/HTML export.
 
-**Not included yet:** EPUB, DOCX, AI writing tools, cloud synchronization, collaboration, comments, equations, diagrams, cross-references, and advanced publishing layouts. These are possible future features, not current capabilities or promised release dates.
+**Not included yet:** EPUB, DOCX, AI writing tools, cloud synchronization, collaboration, comments, diagram editing, cross-references, and advanced publishing layouts. Pasted equations use supported KaTeX notation; unsupported notation remains visible as editable source. These remaining features are possible future work, not promised release dates.
 
 Markdown preserves supported writing blocks and a system bible's numbered hierarchy. Use `.codebook` for an exact project backup, including organization and metadata. The Windows app has been benchmarked with 172,000–700,000 words, up to 2,000 sections, and a 60,000-word individual section. See [timings, hardware, and limits](VALIDATION.md#large-project-performance). Opening a very long individual chapter still requires rendering its content, and image-heavy projects and multi-thousand-page PDF generation are not covered by these typing benchmarks. The browser development preview uses browser storage and does not have the native incremental save path.
 
@@ -241,6 +245,7 @@ npm.cmd test
 npm.cmd run test:e2e
 powershell -ExecutionPolicy Bypass -File scripts/desktop.ps1 test
 node scripts/native-smoke.mjs CodeBook.exe
+node scripts/native-paste-smoke.mjs CodeBook.exe
 node scripts/native-search-smoke.mjs CodeBook.exe
 node scripts/native-outline-pdf-smoke.mjs CodeBook.exe
 node scripts/native-delta-recovery-smoke.mjs CodeBook.exe

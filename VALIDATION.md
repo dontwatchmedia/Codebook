@@ -1,4 +1,4 @@
-# CodeBook 0.2.11 validation
+# CodeBook 0.2.12 validation
 
 Validated on Windows with Node 24, Microsoft Edge, Rust 1.98.1, and the native Tauri/WebView2 runtime.
 
@@ -7,10 +7,12 @@ Validated on Windows with Node 24, Microsoft Edge, Rust 1.98.1, and the native T
 | Check                                                                      | Result           |
 | -------------------------------------------------------------------------- | ---------------- |
 | TypeScript and production Vite build                                       | Pass             |
-| Document, Markdown, clipboard, hierarchy, emoji, export, and storage tests | 225 passed       |
-| Browser workflows in Microsoft Edge                                        | 60 passed        |
+| Document, Markdown, clipboard, hierarchy, emoji, export, and storage tests | 265 passed       |
+| Browser workflows in Microsoft Edge                                        | 65 passed        |
 | Rust atomic replacement, path validation, recovery, preferences and PDF    | 20 passed        |
-| Native application integration                                             | 46 checks passed |
+| Native application integration                                             | 52 checks passed |
+
+Final 0.2.12 native reports are under `test-results/native-paste-1791608043307/` (6 checks), `native-1791608049705/` (28), `native-search-1791608082039/` (6), `native-outline-pdf-1791608087318/` (7), and `native-delta-recovery-1791608095138/` (5). All five suites passed with no runtime errors. Production dependency auditing reported no known vulnerabilities.
 
 The permanent clipboard test uses the specification's exact Hello World structure: H2, paragraph, C++ code, paragraph with inline code, H3, numbered list. It checks language, whitespace, and inline semantics, plus Markdown export/import round trips.
 
@@ -30,6 +32,24 @@ Markdown file tests cover `.md` and `.markdown`, first-H1 and filename titles, h
 
 Browser import workflows select multiple files, measure their actual fonts, inspect saved documents, and compare them after reload. Files dropped into rows or before/root positions retain their batch order and become separate sections. Pointer drags exercise before/inside/after/root placement in both books and bibles to four child levels, move whole subtrees, preserve writing and metadata, and reject parent/descendant cycles. Windows sets frontend drag handling as required by the [Tauri configuration](https://v2.tauri.app/reference/config/#windowconfig), and the compiled-app workflow also tests pointer dragging and real local file drops.
 
+## ChatGPT paste and equations
+
+The 0.2.12 fixtures cover rich HTML and the ChatGPT Copy button's Markdown/plain-text output. Unit checks retain supported source styles and selective emphasis, supply Arial 11pt prose and point-sized headings when absent, remove code controls without deleting ordinary prose, and preserve INI language/whitespace. Recognizable HTML card grids and lifecycle rows become editable tables with narrow arrow columns; sanitizer and export round trips retain their content and formatting.
+
+Equation checks recover LaTeX annotations and raw `\(...\)`, `\[...\]`, and dollar delimiters into source-preserving `inlineMath`/`blockMath` nodes, without duplicate hidden text. Code, escaped delimiters, and ordinary prices remain literal; unsupported notation has a readable source fallback. Clipboard, saved projects, statistics, and HTML/Markdown/PDF HTML exports retain source. Equation markup comes from the bundled renderer.
+
+Whitespace checks distinguish HTML source indentation from intentional document breaks. Inline equations stay on the prose line, while real code blocks and literal Markdown fences copied as paragraphs retain spaces, tabs, and empty lines. The native same-line assertion reproduced the unwanted wrap before the fix. Separate tests retain equation containers through nested list/quote Markdown round trips and preserve oversized equation source as literal text.
+
+The full browser regression also exposed a view-only mutation: the editor's trailing-paragraph helper appended an empty paragraph to a loaded document ending in code during a selection update. A deterministic unit reproduction also covered dividers and display equations. The helper now runs only after document edits, with upstream skip behavior retained. All five regression cases pass, and the PDF preview's exact unchanged-book comparison passed three repeat runs before the final full suite.
+
+Five browser cases passed: measured fonts/selective bold; editable cards, INI and math; Undo/Redo/reload; source editing; paste with Bold active; dark contrast at 960 × 650; Copy-button Markdown; and adjacent image links inside flattened prose. Synthetic PNG responses verify image loading, captions, source links, ordinary citations, line breaks, and text order without invented structure. Fixtures contain no user manuscript content.
+
+The 0.2.11 executable reproduced the font failure in `test-results/native-paste-1791606197255/report.json`, receiving Georgia/Times New Roman instead of Arial. The final 0.2.12 executable passed six checks in `test-results/native-paste-1791608043307/report.json`: native paste/saved JSON and inline-equation placement; Undo/Redo; equation copying/HTML re-paste; Markdown/restart/bundled fonts; native PDF generation/atomic saving; and no runtime errors or external asset requests. Existing sections remained exactly unchanged.
+
+The final fixture generated a two-page PDF. Both rendered pages match the visually inspected page images exactly: compact prose, selective emphasis, code indentation, inline/display equations, narrow flow arrows, and clean pagination without printed scrollbars. Independent extraction confirmed Arial, Consolas, and KaTeX font resources, readable content, and no characters outside page bounds. KaTeX CSS/fonts are bundled locally and embedded in exported HTML/PDF content. Other prose fonts depend on installed Windows fonts.
+
+Plain text cannot restore omitted graphs, cards, tables, or headings. Recognized Markdown/rich HTML can retain supported structures; missing information is not inferred. Known ChatGPT image links become images with captions/source links; their original URLs remain remote and require an available image service and network connection. These fixtures do not cover every external response or image service.
+
 ## Native integration
 
 The compact outline checks use actual Ctrl+wheel input, compare rendered chapter text and emoji sizes, and confirm writing zoom and native WebView zoom remain unchanged. They exercise 80–200% bounds, reset, ordinary scrolling, the shared bookshelf/title header, 26px default rows, individual and all-branch controls, and a collapsed Tools footer with word/page totals still visible. Reopening retains zoom, Tools, and unrelated collapsed branches while revealing the last active section. Browser coverage includes 960 × 650 and compares the entire saved project before and after view changes.
@@ -38,7 +58,7 @@ PDF unit and browser checks cover supported source fonts, point sizes, marks, li
 
 `node scripts/native-outline-pdf-smoke.mjs CodeBook.exe` adds seven native checks: independent outline zoom; collapse/reopen and unchanged project data; real Letter PDF generation and atomic save; A4 regeneration; cache reuse and invalidation after editing; missing-image error recovery and hidden-renderer cleanup; and absence of JavaScript runtime errors. The native renderer waits for fonts and images, preserves selectable text, and runs in an unfocused hidden window with document scripts disabled. The test substitutes only the OS Save As path choice with a path inside its isolated test folder; the actual Windows PDF renderer and native binary write run normally.
 
-The PDF regression fixture produces five-page Letter and A4 PDFs and a nine-page A4 PDF after editing. Independent PDF extraction verified readable text, Arial regular/bold/italic and Consolas font resources, 11pt body and 22pt heading sizes within renderer rounding, an embedded image, an active link, and no text outside the page boundaries. All ten Letter/A4 page renders were visually inspected for pagination, page numbers, tables, code, and layout. The final renders matched the inspected images exactly. Those visual checks were established in 0.2.10. The 0.2.11 regression PDFs retain the exact extracted text, page counts, and page bounds. Final native reports are `test-results/native-1791263441294/`, `test-results/native-search-1791263436188/`, `test-results/native-outline-pdf-1791263473189/`, and `test-results/native-delta-recovery-1791263433089/`.
+The historical PDF regression fixture produces five-page Letter and A4 PDFs and a nine-page A4 PDF after editing. Independent PDF extraction verified readable text, Arial regular/bold/italic and Consolas font resources, 11pt body and 22pt heading sizes within renderer rounding, an embedded image, an active link, and no text outside the page boundaries. All ten Letter/A4 page renders were visually inspected for pagination, page numbers, tables, code, and layout. The final renders matched the inspected images exactly. Those visual checks were established in 0.2.10. The 0.2.11 regression PDFs retained the exact extracted text, page counts, and page bounds. Historical 0.2.11 native reports are `test-results/native-1791263441294/`, `test-results/native-search-1791263436188/`, `test-results/native-outline-pdf-1791263473189/`, and `test-results/native-delta-recovery-1791263433089/`; these paths are not the 0.2.12 final-build reports.
 
 Smart Find unit checks cover real document positions across formatting marks, hard breaks, inline objects, nested lists, tables and code, Unicode case folding without offset drift, literal non-overlapping queries, outline traversal order, and transient highlights that never enter saved content or Undo. Browser workflows exercise the first match in the current chapter, forward/backward wrapping across nested chapters, full ancestor paths and snippets, revealing collapsed parents, query and per-section occurrence retention, repeated Ctrl+F focus, the advanced-search handoff, and distant-match scrolling while Find retains keyboard focus. Replace and Replace all are limited to the current chapter or section and are checked against saved documents with Undo/Redo and reload.
 
@@ -100,7 +120,13 @@ The first 0.2.8 native run timed out waiting for the existing sidebar reset to p
 
 ## Large-project performance
 
-Measured on October 5, 2026, using the Windows release executable, WebView2, an AMD Ryzen 9 9950X (16 cores / 32 threads), and 64 GB RAM. Every project was synthetic and isolated from the user's library. Fixtures contain Arial 11pt paragraphs, split formatting runs, and bold marks: about 8.8 MB of minified JSON at 172,000 words and 35.7–36.8 MB at 700,000 words, before the native pretty-printed snapshot. These are writing/navigation workloads, not page-count or image-load benchmarks.
+The final **0.2.12** executable was checked on October 9, 2026 on the same Windows machine with a synthetic **700,000-word / 350-section** project (35.8 MB of minified JSON). Median typing latency was **7.8 ms**, p95 **14.6 ms**, and section switches **61–67 ms**. There were no main-thread tasks of 50 ms or longer during the measured typing/save period. Initial chapter opening took 230 ms after 2.3 seconds of library readiness; project search completed in 362 ms. The common-word query counted 175,000 occurrences in 218 ms while mounting 60 results, and typing after closing Find had a 6.3 ms median. These are individual-run measurements, not universal latency guarantees.
+
+The run verified actual native autosave, retained writing after repeated navigation, exact unchanged documents in all other sections, and no runtime errors. It sent a 68 KB initial normalization patch, then 477–486 bytes per keystroke; the background checkpoint took 298 ms. The raw report is `test-results/performance-release-0.2.12-growth-1791608199668/report.json`.
+
+The broader comparison below is the established **0.2.11 performance baseline**, not newly measured 0.2.12 timings.
+
+Measured on October 5, 2026, using the 0.2.11 Windows release executable, WebView2, an AMD Ryzen 9 9950X (16 cores / 32 threads), and 64 GB RAM. Every project was synthetic and isolated from the user's library. Fixtures contain Arial 11pt paragraphs, split formatting runs, and bold marks: about 8.8 MB of minified JSON at 172,000 words and 35.7–36.8 MB at 700,000 words, before the native pretty-printed snapshot. These are writing/navigation workloads, not page-count or image-load benchmarks.
 
 Typing latency is measured from the keydown event to the second animation frame, as a proxy for input-to-paint responsiveness. Each run types 11 characters at 35 ms intervals, waits for actual native persistence, switches sections four times, searches the project, then searches a common word and types seven more characters after closing Find. The table compares the same synthetic inputs in 0.2.10 and the final 0.2.11 executable; it reports individual runs, not a multi-machine average.
 
@@ -166,14 +192,14 @@ Reviewed Smart Find at the minimum 960 × 650 browser window with a wide outline
 
 - A process-crash test is not a hardware power-loss test.
 - Typing and navigation were benchmarked up to 700,000 words and 2,000 sections as detailed above. Thousands of embedded images and multi-thousand-page PDF export have not been benchmarked; these results are not a universal no-lag guarantee.
-- External clipboard applications were represented by regression fixtures; each named application was not manually tested.
+- External clipboard applications were represented by regression fixtures; each named application was not manually tested. Plain-text copying cannot recover omitted graphs or semantic layout. Remote image URLs require their source to remain available.
 - This release does not include the roadmap's EPUB, AI, cloud, collaboration, or advanced publishing features.
 - Explorer-style file drops are exercised using WebView2’s drag protocol with real files, rather than manually automating a File Explorer gesture. Internal native chapter dragging uses pointer input.
 - The native smoke tests do not manually drive the Windows Save As dialog; they verify native filesystem saving, recovery, and real PDF generation/saving using an isolated selected path. Browser workflows verify generated/downloaded exports and the print handoff.
-- Page totals remain explicitly estimated until a native PDF is prepared. Actual pagination depends on paper and export settings. The HTML preview is continuous; the saved PDF shows the final page breaks. PDF fonts use installed Windows fonts; unavailable remote images report a generation error.
+- Page totals remain explicitly estimated until a native PDF is prepared. Actual pagination depends on paper and export settings. The HTML preview is continuous; the saved PDF shows the final page breaks. Equation fonts are bundled; prose fonts use installed Windows fonts. Unavailable remote images report a generation error.
 
 Reproduce using the commands in `README.md`. Native reports and screenshots are written to `test-results/native-<timestamp>/` and browser screenshots to `test-results/`.
 
 ## Package audit
 
-The root, build, and release executable copies have matching SHA-256 hashes. The portable ZIP contains the current executable, quick-start guide, README, validation notes, licenses including the Unicode and pdf-lib notices, checksum, and the fifteen screenshots referenced by the README. Its embedded executable matches the tested native build; previous executables and user projects are excluded.
+The final 0.2.12 package audit verified identical SHA-256 hashes for the compiled executable, root `CodeBook.exe`, release executable, and ZIP's executable. The ZIP contains exactly 22 entries: one current executable, its checksum, five supporting documents/license files, and all fifteen README screenshots. Documentation matches the source files byte for byte; old executables, user projects, and test data are excluded. The executable is 11,795,456 bytes with SHA-256 `1ED325DCA9B3F929DEC08C16F7BD7504DFD83B1F94671007A418CC7EE8DAC2ED`.

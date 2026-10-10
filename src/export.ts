@@ -8,6 +8,8 @@ import {
 } from "./model";
 import { lowlight } from "./editor/highlighting";
 import { blockStyleCSS, textStyleCSS } from "./formatting";
+import { mathHTML, mathSource } from "./math";
+import { mathExportCSS } from "./mathExport";
 const escape = (s: string) =>
   s
     .replace(/&/g, "&amp;")
@@ -43,6 +45,8 @@ export function highlightedCode(content: string, language: string): string {
     .join("");
 }
 export function toMarkdown(node: JSONContent, headingOffset = 0): string {
+  if (node.type === "inlineMath" || node.type === "blockMath")
+    return mathSource(node) + (node.type === "blockMath" ? "\n\n" : "");
   const children = () =>
     (node.content ?? []).map((n) => toMarkdown(n, headingOffset)).join("");
   if (node.type === "text") {
@@ -163,6 +167,8 @@ export function toHTML(
   headingOffset = 0,
   preserveFormatting = true,
 ): string {
+  if (node.type === "inlineMath" || node.type === "blockMath")
+    return mathHTML(node.attrs?.latex || "", node.type === "blockMath");
   const c = () =>
     (node.content || [])
       .map((n) => toHTML(n, headingOffset, preserveFormatting))
@@ -201,11 +207,29 @@ export function toHTML(
   };
   if (tags[node.type!]) {
     const tag = tags[node.type!];
+    let cellAttributes = "";
+    if (tag === "td" || tag === "th") {
+      for (const name of ["colspan", "rowspan"] as const) {
+        const value = Number(node.attrs?.[name]);
+        if (Number.isInteger(value) && value > 1 && value <= 100)
+          cellAttributes += ` ${name}="${value}"`;
+      }
+      const widths = node.attrs?.colwidth;
+      if (
+        Array.isArray(widths) &&
+        widths.length > 0 &&
+        widths.length <= 100 &&
+        widths.every(
+          (width) => Number.isInteger(width) && width > 0 && width <= 10000,
+        )
+      )
+        cellAttributes += ` colwidth="${widths.join(",")}"`;
+    }
     const style =
       !preserveFormatting || tag === "table" || tag === "tr"
         ? ""
         : blockStyleCSS(node.attrs || {});
-    return `<${tag}${styleAttribute(style)}>${c()}</${tag}>\n`;
+    return `<${tag}${cellAttributes}${styleAttribute(style)}>${c()}</${tag}>\n`;
   }
   switch (node.type) {
     case "heading": {
@@ -253,7 +277,7 @@ export function exportMarkdown(book: Book) {
 export function exportHTML(book: Book) {
   if (book.mode === "bible" || hasNestedSections(book))
     return exportBibleHTML(book);
-  return `<!doctype html>\n<html lang="${escape(book.language || "en")}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escape(book.title)}</title><style>body{max-width:760px;margin:64px auto;padding:0 28px;font:18px/1.75 Georgia,serif;color:#252d28;background:#fff}h1,h2,h3{line-height:1.25}header{border-bottom:1px solid #ddd;padding-bottom:36px}nav{margin:40px 0}a{color:#2c6853}section{margin:60px 0;break-before:page}pre{background:#f1f4f2;padding:22px;white-space:pre-wrap;overflow-wrap:anywhere;border:1px solid #dde4df;border-radius:6px;tab-size:4}code{font:0.85em/1.6 Consolas,monospace}p code{background:#eef2ef;padding:2px 4px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccd5cf;padding:8px;text-align:left}img{max-width:100%}aside,blockquote{border-left:3px solid #62927e;padding:12px 24px;background:#f4f7f3}.hljs-keyword,.hljs-selector-tag{color:#8d4a78}.hljs-string{color:#467148}.hljs-number,.hljs-literal{color:#a3673e}.hljs-title,.hljs-type,.hljs-built_in{color:#326b91}.hljs-comment{color:#7c877a;font-style:italic}@media print{body{margin:0;font-size:11pt}nav{break-after:page}pre{break-inside:avoid}}</style></head><body><header><h1>${escape(book.title)}</h1><p>${escape(book.subtitle)}</p><p>${escape(book.author)}</p></header><nav aria-label="Contents"><h2>Contents</h2><ol>${chapters(
+  return `<!doctype html>\n<html lang="${escape(book.language || "en")}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escape(book.title)}</title><style>body{max-width:760px;margin:64px auto;padding:0 28px;font:18px/1.75 Georgia,serif;color:#252d28;background:#fff}h1,h2,h3{line-height:1.25}header{border-bottom:1px solid #ddd;padding-bottom:36px}nav{margin:40px 0}a{color:#2c6853}section{margin:60px 0;break-before:page}pre{background:#f1f4f2;padding:22px;white-space:pre-wrap;overflow-wrap:anywhere;border:1px solid #dde4df;border-radius:6px;tab-size:4}code{font:0.85em/1.6 Consolas,monospace}p code{background:#eef2ef;padding:2px 4px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccd5cf;padding:8px;text-align:left}img{max-width:100%}aside,blockquote{border-left:3px solid #62927e;padding:12px 24px;background:#f4f7f3}.hljs-keyword,.hljs-selector-tag{color:#8d4a78}.hljs-string{color:#467148}.hljs-number,.hljs-literal{color:#a3673e}.hljs-title,.hljs-type,.hljs-built_in{color:#326b91}.hljs-comment{color:#7c877a;font-style:italic}@media print{body{margin:0;font-size:11pt}nav{break-after:page}pre{break-inside:avoid}}${mathExportCSS}</style></head><body><header><h1>${escape(book.title)}</h1><p>${escape(book.subtitle)}</p><p>${escape(book.author)}</p></header><nav aria-label="Contents"><h2>Contents</h2><ol>${chapters(
     book,
   )
     .map(
@@ -383,5 +407,5 @@ function exportBibleHTML(book: Book): string {
       body.push("</section>");
   }
   contents.push("</ol>");
-  return `<!doctype html>\n<html lang="${escape(book.language || "en")}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escape(book.title)}</title><style>body{max-width:900px;margin:48px auto;padding:0 28px;font:18px/1.7 system-ui,sans-serif;color:#252d28;background:#fff}h1,h2,h3,h4,h5,h6,[role=heading]{line-height:1.25}header{border-bottom:1px solid #ddd;padding-bottom:24px}nav{margin:32px 0}nav ol{padding-left:24px}nav>ol{list-style:none;padding-left:0}nav ol ol{list-style:none}a{color:#2c6853}.outline-section{margin:36px 0}.outline-section>.outline-section{border-left:1px solid #dde4df;padding-left:18px}.progress,.section-progress{font:0.8em/1.5 system-ui,sans-serif;color:#526258}.progress{margin-left:8px}[role=heading]{font-weight:bold;margin:1.2em 0 0.6em}pre{background:#f1f4f2;padding:22px;white-space:pre-wrap;overflow-wrap:anywhere;border:1px solid #dde4df;border-radius:6px;tab-size:4}code{font:0.85em/1.6 Consolas,monospace}p code{background:#eef2ef;padding:2px 4px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccd5cf;padding:8px;text-align:left}img{max-width:100%}aside,blockquote{border-left:3px solid #62927e;padding:12px 24px;background:#f4f7f3}.hljs-keyword,.hljs-selector-tag{color:#8d4a78}.hljs-string{color:#467148}.hljs-number,.hljs-literal{color:#a3673e}.hljs-title,.hljs-type,.hljs-built_in{color:#326b91}.hljs-comment{color:#7c877a;font-style:italic}@media print{body{margin:0;font-size:11pt}nav{break-after:page}pre{break-inside:avoid}.outline-section>.outline-section{padding-left:12px}}</style></head><body><header><h1>${escape(book.title)}</h1>${book.subtitle ? `<p>${escape(book.subtitle)}</p>` : ""}${book.author ? `<p>${escape(book.author)}</p>` : ""}</header><nav aria-label="Contents"><h2>Contents</h2>${contents.join("")}</nav>${body.join("\n")}</body></html>`;
+  return `<!doctype html>\n<html lang="${escape(book.language || "en")}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escape(book.title)}</title><style>body{max-width:900px;margin:48px auto;padding:0 28px;font:18px/1.7 system-ui,sans-serif;color:#252d28;background:#fff}h1,h2,h3,h4,h5,h6,[role=heading]{line-height:1.25}header{border-bottom:1px solid #ddd;padding-bottom:24px}nav{margin:32px 0}nav ol{padding-left:24px}nav>ol{list-style:none;padding-left:0}nav ol ol{list-style:none}a{color:#2c6853}.outline-section{margin:36px 0}.outline-section>.outline-section{border-left:1px solid #dde4df;padding-left:18px}.progress,.section-progress{font:0.8em/1.5 system-ui,sans-serif;color:#526258}.progress{margin-left:8px}[role=heading]{font-weight:bold;margin:1.2em 0 0.6em}pre{background:#f1f4f2;padding:22px;white-space:pre-wrap;overflow-wrap:anywhere;border:1px solid #dde4df;border-radius:6px;tab-size:4}code{font:0.85em/1.6 Consolas,monospace}p code{background:#eef2ef;padding:2px 4px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccd5cf;padding:8px;text-align:left}img{max-width:100%}aside,blockquote{border-left:3px solid #62927e;padding:12px 24px;background:#f4f7f3}.hljs-keyword,.hljs-selector-tag{color:#8d4a78}.hljs-string{color:#467148}.hljs-number,.hljs-literal{color:#a3673e}.hljs-title,.hljs-type,.hljs-built_in{color:#326b91}.hljs-comment{color:#7c877a;font-style:italic}@media print{body{margin:0;font-size:11pt}nav{break-after:page}pre{break-inside:avoid}.outline-section>.outline-section{padding-left:12px}}${mathExportCSS}</style></head><body><header><h1>${escape(book.title)}</h1>${book.subtitle ? `<p>${escape(book.subtitle)}</p>` : ""}${book.author ? `<p>${escape(book.author)}</p>` : ""}</header><nav aria-label="Contents"><h2>Contents</h2>${contents.join("")}</nav>${body.join("\n")}</body></html>`;
 }

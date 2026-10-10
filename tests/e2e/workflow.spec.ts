@@ -112,7 +112,7 @@ test("HTML paste is sanitized and browser image files remain embedded", async ({
     );
   });
   await expect(page.locator(".manuscript h2")).toHaveText("Browser content");
-  await expect(page.locator(".manuscript strong")).toHaveText("Bold");
+  await expect(page.locator(".manuscript p strong")).toHaveText("Bold");
   await expect(page.locator(".manuscript table tr")).toHaveCount(2);
   await expect(page.getByLabel("Code language")).toHaveValue("python");
   await expect(page.locator(".manuscript img")).toHaveAttribute(

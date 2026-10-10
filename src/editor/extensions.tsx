@@ -1,5 +1,6 @@
 import { Node, mergeAttributes } from "@tiptap/core";
 import { SearchHighlights } from "./SearchHighlights";
+import { EditingTrailingNode } from "./EditingTrailingNode";
 import {
   NodeViewContent,
   NodeViewWrapper,
@@ -15,6 +16,7 @@ import { codeDecorations } from "./codeDecorations";
 import { Copy, Check, Hash, Code2 } from "lucide-react";
 import { useState } from "react";
 import { ImportedTextStyle, ImportedBlockStyle } from "./formatting";
+import { InlineMath, BlockMath } from "./Math";
 export const languages = [
   ["plaintext", "Plain text"],
   ["cpp", "C++"],
@@ -35,6 +37,7 @@ export const languages = [
   ["powershell", "PowerShell"],
   ["json", "JSON"],
   ["yaml", "YAML"],
+  ["ini", "INI"],
   ["markdown", "Markdown"],
 ];
 function CodeView({ node, updateAttributes, editor }: NodeViewProps) {
@@ -190,12 +193,16 @@ export function extensions() {
   return [
     StarterKit.configure({
       codeBlock: false,
+      trailingNode: false,
       heading: { levels: [1, 2, 3, 4, 5, 6] },
       link: { openOnClick: false, protocols: ["https", "http", "mailto"] },
     }),
     ImportedTextStyle,
+    EditingTrailingNode,
     ImportedBlockStyle,
     SearchHighlights,
+    InlineMath,
+    BlockMath,
     TechnicalCode,
     Image.configure({ allowBase64: true }),
     TableKit.configure({ table: { resizable: true } }),

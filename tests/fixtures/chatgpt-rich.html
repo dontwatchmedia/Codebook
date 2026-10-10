@@ -1,0 +1,34 @@
+<!-- Synthetic ChatGPT-style clipboard selection; contains no user manuscript. -->
+<div data-message-author-role="assistant">
+  <div class="markdown prose dark:prose-invert">
+    <h2>A balanced simulation</h2>
+    <p>Each stage keeps its own state with <strong>selective emphasis</strong> and <em>careful timing</em>.</p>
+    <p>Store the setting in <code>simulation.ini</code>, then follow the lifecycle below.</p>
+    <ul><li>Keep state local</li><li>Check the stage transition</li></ul>
+    <div class="rounded-lg border overflow-hidden">
+      <div class="flex items-center justify-between text-xs"><span>ini</span><button aria-label="Copy code">Copy code</button><button aria-label="Edit response">Edit response</button></div>
+      <pre><code class="language-ini">[Simulation]
+Enabled=true
+  ; Keep indentation and **literal** syntax
+MaxSteps=12</code></pre>
+    </div>
+    <p>A circular boundary uses
+      <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi><mo>+</mo><mi>y</mi></mrow><annotation encoding="application/x-tex">x^2 + y^2 = r^2</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span>x²+y²=r²</span></span></span>.
+    </p>
+    <span class="katex-display"><span class="katex"><span class="katex-mathml"><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>P</mi><mo>=</mo><mi>W</mi></mrow><annotation encoding="application/x-tex">P_{stage} = \frac{W_{stage}}{\sum_{i=1}^{n} W_i}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span>Pstage=Wstage/ΣWi</span></span></span></span>
+    <div class="grid grid-cols-2 gap-4">
+      <div class="rounded-lg border p-4"><h3>Inputs</h3><p>Stage weights</p><ul><li>Current state</li><li>Elapsed time</li></ul></div>
+      <div class="rounded-lg border p-4"><h3>Outputs</h3><p>Selected stage</p><p><strong>One transition</strong> per cycle.</p></div>
+    </div>
+    <h3>Lifecycle</h3>
+    <div class="flex items-center gap-3">
+      <div class="rounded-lg border p-3"><strong>Draft</strong><p>Write the rule</p></div>
+      <span aria-hidden="true">→</span>
+      <div class="rounded-lg border p-3"><strong>Review</strong><p>Test the rule</p></div>
+      <span aria-hidden="true">→</span>
+      <div class="rounded-lg border p-3"><strong>Published</strong><p>Use the rule</p></div>
+    </div>
+    <blockquote><p>Design note: keep the prose and the structure editable.</p></blockquote>
+    <p>A final normal paragraph remains easy to edit.</p>
+  </div>
+</div>

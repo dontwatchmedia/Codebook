@@ -1,4 +1,4 @@
-CODEBOOK 0.2.11 — BOOKS AND SYSTEM BIBLES
+CODEBOOK 0.2.12 — BOOKS AND SYSTEM BIBLES
 
 Extract the ZIP, then double-click CodeBook.exe.
 
@@ -6,6 +6,13 @@ No account, internet connection, Node.js, or Rust is needed to write.
 Requires 64-bit Windows 10/11 and Microsoft Edge WebView2.
 
 Open the Learning C++ sample, choose New book, or choose New system bible.
+ChatGPT's Copy button can be pasted directly: Markdown headings, lists,
+emphasis, tables, code and equations become formatted, editable content.
+Pasted text without a source font uses compact Arial conventions.
+Double-click an equation to edit its LaTeX source. Equation rendering and
+HTML/PDF fonts work offline. Format Markdown also converts literal equations
+already pasted into paragraphs. Re-copy an older flattened paste to restore
+formatting that was not retained; missing source layouts cannot be recreated.
 Drag the left panel's right edge to make the outline wider or narrower.
 The width is remembered after restarting. Double-click the divider to reset.
 You can also focus it and press Left/Right, Shift for bigger steps, or Home/End.

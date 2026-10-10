@@ -3,6 +3,7 @@ import { marked } from "marked";
 import { sanitizeHTML } from "./clipboard";
 import { extensions } from "./editor/extensions";
 import { validateDocument } from "./model";
+import { protectMarkdownMath } from "./math";
 
 export interface ImportedChapter {
   title: string;
@@ -41,8 +42,14 @@ function fileTitle(fileName: string): string {
 }
 
 function chapterMarkdownHTML(source: string): string {
+  const protectedMath = protectMarkdownMath(source);
   const parsed = new DOMParser().parseFromString(
-    marked.parse(source, { gfm: true, breaks: false }) as string,
+    protectedMath.restore(
+      marked.parse(protectedMath.source, {
+        gfm: true,
+        breaks: false,
+      }) as string,
+    ),
     "text/html",
   );
   // The manuscript schema does not have interactive task-list nodes. Preserve

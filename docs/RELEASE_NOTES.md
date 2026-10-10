@@ -1,16 +1,27 @@
-# CodeBook 0.2.11 — Faster writing in large projects
+# CodeBook 0.2.12 — Better ChatGPT paste and equations
 
-Keep writing and moving between sections as your technical book or game design bible grows. This release removes whole-project work from the desktop typing path.
+Paste ChatGPT responses with compact typography, editable structure, and rendered equations, while retaining the large-project improvements from 0.2.11.
 
 ## Download
 
 - **[CodeBook.exe](https://github.com/dontwatchmedia/Codebook/releases/latest/download/CodeBook.exe)** — the current portable Windows executable.
-- **CodeBook-0.2.11-Windows.zip** — the same executable with a quick-start guide, README, validation notes, licenses, and SHA-256 checksum, available in the **[latest release](https://github.com/dontwatchmedia/Codebook/releases/latest)**.
+- **CodeBook-0.2.12-Windows.zip** — the same executable with a quick-start guide, README, validation notes, licenses, and SHA-256 checksum, available in the **[latest release](https://github.com/dontwatchmedia/Codebook/releases/latest)**.
 - **CodeBook.exe.sha256** — checksum for the executable.
 
 Download the EXE directly, or extract the ZIP and double-click CodeBook.exe. No Node.js, Rust, login, or development server is needed to use it. Requires 64-bit Windows 10/11 and Microsoft Edge WebView2. The executable is unsigned.
 
-## New in 0.2.11
+## New in 0.2.12
+
+- ChatGPT Copy-button Markdown and rich HTML get Arial 11pt prose and the established Google-style heading sizes when the source has no font. Explicit source fonts and formatting remain intact.
+- Pasted HTML indentation no longer becomes unwanted blank space or line breaks. Inline equations stay with their sentence; code indentation and intentional breaks remain intact.
+- Viewing or exporting a document ending in code, a divider, or an equation no longer appends a blank paragraph or marks the book as edited.
+- Inline and display equations render locally, retain their LaTeX source, and can be edited by double-clicking. Supported notation survives saving, copying, Markdown/HTML export, and formatted PDF export with bundled fonts.
+- **Format Markdown** can repair literal equation notation already pasted into paragraphs. Re-copy earlier content when its source formatting was discarded.
+- Recognizable rich-HTML cards, grids, and simple flow rows become editable callouts and tables. Code blocks retain their actual text and language, including INI, without copied interface controls.
+- Recognizable ChatGPT full-size image links become images with captions and retained source links. Flattened copies keep their line breaks. Remote pictures still require an available URL and an internet connection.
+- Copy-button content can only preserve the structure supplied by the clipboard. Decorative or interactive visuals copied as plain text cannot be reconstructed automatically. Unsupported equations remain visible as editable source.
+
+## Included from 0.2.11
 
 - Desktop typing sends small changes to a durable recovery journal instead of serializing the entire book for every key. Full snapshots run on a background worker; backups and recovery remain available.
 - Unchanged editor content, font validation, word counts, page estimates, code highlighting, and search results are reused. Moving the caret no longer rescans all the writing.

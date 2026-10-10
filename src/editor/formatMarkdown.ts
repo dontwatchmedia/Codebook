@@ -8,6 +8,7 @@ import {
 import { closeHistory } from "@tiptap/pm/history";
 import { marked, type Token } from "marked";
 import { parseChapterFile } from "../importChapter";
+import { mathSource, protectMarkdownMath } from "../math";
 
 export interface FormatMarkdownResult {
   changed: boolean;
@@ -33,7 +34,11 @@ function sourceFor(blocks: SourceBlock[]) {
     let source = "";
     node.content.cut(from, to).forEach((child) => {
       if (child.type.name === "hardBreak") source += "\n";
-      else if (child.isText) {
+      else if (child.type.name === "inlineMath") {
+        const key = `${prefix}${protectedText.size}\uE001`;
+        protectedText.set(key, child.toJSON());
+        source += key;
+      } else if (child.isText) {
         // Auto-linked URL spans are still destinations inside raw Markdown.
         const autoLinkedDestination =
           child.marks.some((mark) => mark.type.name === "link") &&
@@ -176,7 +181,13 @@ function restoreProtected(
               .map((mark) => mark.toJSON());
             result.push(
               inCode
-                ? { type: "text", text: original.text }
+                ? {
+                    type: "text",
+                    text:
+                      original.type === "inlineMath"
+                        ? mathSource(original)
+                        : original.text,
+                  }
                 : {
                     ...original,
                     ...(restoredMarks.length ? { marks: restoredMarks } : {}),
@@ -204,7 +215,11 @@ export function formatMarkdown(editor: Editor): FormatMarkdownResult {
   const convert = (blocks: SourceBlock[]) => {
     if (!blocks.length) return;
     const { source, protectedText } = sourceFor(blocks);
-    if (!source.trim() || !hasMarkdown(marked.lexer(source, { gfm: true })))
+    if (
+      !source.trim() ||
+      (!hasMarkdown(marked.lexer(source, { gfm: true })) &&
+        protectMarkdownMath(source).source === source)
+    )
       return;
     const parsed = restoreProtected(
       parseChapterFile("formatted.md", source).document,

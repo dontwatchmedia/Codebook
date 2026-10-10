@@ -8,6 +8,8 @@ import {
 import { blockStyleCSS } from "./formatting";
 import { highlightedCode, toHTML } from "./export";
 import { generateNativePDF, saveNativePDF } from "./pdfNative";
+import { mathHTML, mathSource } from "./math";
+import { mathExportCSS } from "./mathExport";
 
 export interface PDFOptions {
   paper: "letter" | "a4";
@@ -68,9 +70,11 @@ const safeURL = (value: unknown): string =>
 const styleAttribute = (value: string) =>
   value ? ` style="${escape(value)}"` : "";
 const textOf = (node: JSONContent): string =>
-  node.type === "hardBreak"
-    ? "\n"
-    : node.text || (node.content || []).map(textOf).join("");
+  node.type === "inlineMath" || node.type === "blockMath"
+    ? mathSource(node)
+    : node.type === "hardBreak"
+      ? "\n"
+      : node.text || (node.content || []).map(textOf).join("");
 const titleKey = (value: string) =>
   value.trim().replace(/\s+/g, " ").normalize("NFKC").toLocaleLowerCase();
 const boundedInteger = (value: unknown, max: number): number =>
@@ -127,6 +131,8 @@ export function pdfNodeHTML(
   return renderPDFNode(node, normalizePDFOptions(input));
 }
 function renderPDFNode(node: JSONContent, options: PDFOptions): string {
+  if (node.type === "inlineMath" || node.type === "blockMath")
+    return mathHTML(node.attrs?.latex || "", node.type === "blockMath");
   const children = () =>
     (node.content || []).map((child) => renderPDFNode(child, options)).join("");
   const style = printBlockStyle(node, options);
@@ -159,10 +165,18 @@ function renderPDFNode(node: JSONContent, options: PDFOptions): string {
       }
     }
     const total = widths.reduce((sum, width) => sum + width, 0);
+    // Keep narrow fixed columns (for example flow arrows) when neighboring
+    // content columns are automatic. Reserve at least half the page for those.
+    const printableWidth =
+      ((options.paper === "a4" ? 210 / 25.4 : 8.5) - 2 * PDF_MARGIN_INCHES) *
+      96;
+    const partialScale = Math.min(1, printableWidth / (2 * total));
     const columns =
       total && widths.every(Boolean)
         ? `<colgroup>${widths.map((width) => `<col style="width:${((width / total) * 100).toFixed(3)}%">`).join("")}</colgroup>`
-        : "";
+        : total
+          ? `<colgroup>${widths.map((width) => (width ? `<col style="width:${(((width * partialScale) / printableWidth) * 100).toFixed(3)}%">` : "<col>")).join("")}</colgroup>`
+          : "";
     const header = rows[0]?.content?.every(
       (cell) =>
         cell.type === "tableHeader" &&
@@ -279,7 +293,7 @@ table{width:100%;border-collapse:collapse;table-layout:fixed;margin:8pt 0;break-
 .pdf-code{margin:8pt 0;break-inside:auto}.pdf-code-filename{font:9pt/1.3 Consolas,'Courier New',monospace;background:#edf1f6;border:1px solid #c5cbd3;border-bottom:0;padding:5pt 7pt;break-after:avoid}.pdf-code pre{font:9pt/1.35 Consolas,'Courier New',monospace;border:1px solid #c5cbd3;background:#f5f7fa;margin:0;padding:7pt;white-space:pre-wrap;overflow-wrap:anywhere;tab-size:4;break-inside:auto}.pdf-code code{font:inherit}.pdf-code-caption{font:9pt/1.3 Arial,sans-serif;color:#444;margin:4pt 0;break-before:avoid}.pdf-code-line{display:flex;break-inside:avoid;min-width:0}.pdf-line-number{user-select:none;color:#6c7480;text-align:right;flex:0 0 3ch;margin-right:1.5ch}.pdf-line-source{white-space:pre-wrap;overflow-wrap:anywhere;min-width:0;flex:1}p code,li code,td code{font:0.92em Consolas,'Courier New',monospace;background:#eef1f5;padding:1pt 2pt}.hljs-keyword,.hljs-selector-tag{color:#794d91}.hljs-string{color:#2f703c}.hljs-number,.hljs-literal{color:#a34c1e}.hljs-title,.hljs-type,.hljs-built_in{color:#185c94}.hljs-comment{color:#596370;font-style:italic}
 @media screen{body{width:${options.paper === "a4" ? "210mm" : "8.5in"};min-height:${options.paper === "a4" ? "297mm" : "11in"};padding:${PDF_MARGIN_INCHES}in;margin:16px auto;box-shadow:0 1px 8px #0002}.pdf-new-page{border-top:1px dashed #ccc;padding-top:12pt}}
 @media print{body{zoom:1!important}}
-</style></head><body${options.compactSpacing ? ' class="pdf-compact"' : ""}>${header}${body}</body></html>`;
+${mathExportCSS}</style></head><body${options.compactSpacing ? ' class="pdf-compact"' : ""}>${header}${body}</body></html>`;
 }
 
 function points(value: unknown, fallback: number): number {
@@ -333,6 +347,7 @@ function measurePDFPages(
     return result;
   };
   const calculateHeight = (node: JSONContent, width: number): number => {
+    if (node.type === "blockMath") return 48;
     if (node.type === "image")
       return (
         Math.min(pageHeight * 0.85, points(node.attrs?.height, width * 0.5)) +

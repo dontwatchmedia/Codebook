@@ -27,9 +27,11 @@ import {
 } from "lucide-react";
 import { extensions } from "./extensions";
 import { formatMarkdown } from "./formatMarkdown";
+import { parsePastedHTML } from "./pasteHTML";
 import { serializeDocument } from "./runtime";
 import { useToolbarState } from "./useToolbarState";
 import { clipboardHTML, NATIVE_MIME } from "../clipboard";
+import { mathSource } from "../math";
 import { validateDocument, type Chapter } from "../model";
 import { DOMSerializer } from "@tiptap/pm/model";
 import { Selection, TextSelection } from "@tiptap/pm/state";
@@ -130,7 +132,9 @@ export default function Manuscript({
         }
         const html = clipboardHTML(data);
         if (html) {
-          editor?.commands.insertContent(html);
+          editor?.commands.insertContent(
+            parsePastedHTML(html, view.state.schema),
+          );
           return true;
         }
         const images = Array.from(data.files).filter((f) =>
@@ -178,7 +182,11 @@ export default function Manuscript({
           event.clipboardData.setData("text/html", wrapper.innerHTML);
           event.clipboardData.setData(
             "text/plain",
-            slice.content.textBetween(0, slice.content.size, "\n\n"),
+            slice.content.textBetween(0, slice.content.size, "\n\n", (node) =>
+              ["inlineMath", "blockMath"].includes(node.type.name)
+                ? mathSource({ type: node.type.name, attrs: node.attrs })
+                : node.type.spec.leafText?.(node) || "",
+            ),
           );
           event.preventDefault();
           return true;

@@ -192,6 +192,32 @@ describe("PDF layout preserves project formatting", () => {
         ?.textContent,
     ).toBe(book.title);
   });
+  it("keeps flow arrow columns narrow alongside automatic content columns", () => {
+    const flow = (width: number): JSONContent => ({
+      type: "table",
+      content: [
+        {
+          type: "tableRow",
+          content: [
+            { type: "tableCell", content: [paragraph("Draft")] },
+            {
+              type: "tableCell",
+              attrs: { colwidth: [width] },
+              content: [paragraph("→")],
+            },
+            { type: "tableCell", content: [paragraph("Published")] },
+          ],
+        },
+      ],
+    });
+    const columns = parsed(pdfNodeHTML(flow(32))).querySelectorAll("col");
+    expect(columns).toHaveLength(3);
+    expect(columns[0].style.width).toBe("");
+    expect(parseFloat(columns[1].style.width)).toBeLessThan(5);
+    expect(columns[2].style.width).toBe("");
+    const oversized = parsed(pdfNodeHTML(flow(10000))).querySelectorAll("col");
+    expect(oversized[1].style.width).toBe("50%");
+  });
   it("preserves merged tables, column proportions, code metadata and optional line numbers", () => {
     const table: JSONContent = {
       type: "table",

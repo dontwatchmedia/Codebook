@@ -1,5 +1,6 @@
 import type { JSONContent } from "@tiptap/core";
 import { normalizeFormattingValue } from "./formatting";
+import { mathSource, validMathSource } from "./math";
 export type Status =
   "Idea" | "Outline" | "Draft" | "Revision" | "Editing" | "Final";
 export type Progress =
@@ -84,19 +85,23 @@ export const emptyDoc = (): JSONContent => ({
 export const chapters = (book: Book) =>
   book.nodes.filter((n): n is Chapter => n.type === "chapter");
 export const plainText = (doc: JSONContent): string =>
-  doc.text ??
-  (doc.content ?? [])
-    .map(plainText)
-    .join(
-      ["doc", "bulletList", "orderedList", "table", "tableRow"].includes(
-        doc.type ?? "",
-      )
-        ? "\n"
-        : doc.type === "listItem"
-          ? " "
-          : "",
-    );
+  doc.type === "inlineMath" || doc.type === "blockMath"
+    ? mathSource(doc)
+    : (doc.text ??
+      (doc.content ?? [])
+        .map(plainText)
+        .join(
+          ["doc", "bulletList", "orderedList", "table", "tableRow"].includes(
+            doc.type ?? "",
+          )
+            ? "\n"
+            : doc.type === "listItem"
+              ? " "
+              : "",
+        ));
 export function docText(doc: JSONContent): string {
+  if (doc.type === "inlineMath" || doc.type === "blockMath")
+    return mathSource(doc);
   return (
     doc.text ??
     (doc.content ?? [])
@@ -129,15 +134,20 @@ export function cachedDocumentStats(doc: JSONContent): DocumentStats {
   const cached = documentStats.get(doc);
   if (cached) return cached;
   let result: TextStats;
-  if (typeof doc.text === "string") {
+  if (
+    typeof doc.text === "string" ||
+    doc.type === "inlineMath" ||
+    doc.type === "blockMath"
+  ) {
+    const text = doc.text ?? mathSource(doc);
     let words = 0;
     const matcher = /\S+/g;
-    while (matcher.exec(doc.text)) words++;
+    while (matcher.exec(text)) words++;
     result = {
       words,
-      characters: doc.text.length,
-      startsWithWord: /^\S/.test(doc.text),
-      endsWithWord: /\S$/.test(doc.text),
+      characters: text.length,
+      startsWithWord: /^\S/.test(text),
+      endsWithWord: /\S$/.test(text),
     };
   } else {
     const concatenate = ["text", "paragraph", "heading", "codeBlock"].includes(
@@ -246,6 +256,8 @@ const allowedNodes = new Set([
   "horizontalRule",
   "hardBreak",
   "callout",
+  "inlineMath",
+  "blockMath",
 ]);
 const allowedMarks = new Set([
   "bold",
@@ -312,6 +324,11 @@ function validateDocumentWith(
   if (!validateFormattingAttributes(doc.attrs)) return false;
   if (doc.type === "text" && typeof doc.text !== "string") return false;
   if (
+    (doc.type === "inlineMath" || doc.type === "blockMath") &&
+    !validMathSource(doc.attrs?.latex)
+  )
+    return false;
+  if (
     doc.marks &&
     (!Array.isArray(doc.marks) ||
       doc.marks.some(
@@ -322,7 +339,7 @@ function validateDocumentWith(
       ))
   )
     return false;
-  const inline = ["text", "hardBreak"];
+  const inline = ["text", "hardBreak", "inlineMath"];
   const blocks = [
     "paragraph",
     "heading",
@@ -334,6 +351,7 @@ function validateDocumentWith(
     "table",
     "horizontalRule",
     "callout",
+    "blockMath",
   ];
   const children: Record<string, string[]> = {
     doc: blocks,
@@ -353,6 +371,8 @@ function validateDocumentWith(
     image: [],
     hardBreak: [],
     horizontalRule: [],
+    inlineMath: [],
+    blockMath: [],
   };
   if (
     doc.content &&

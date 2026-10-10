@@ -1,6 +1,13 @@
 import DOMPurify from "dompurify";
 import { marked } from "marked";
 import { sanitizeInlineStyle } from "./formatting";
+import {
+  hasFlattenedCopyLinks,
+  normalizeRichClipboard,
+  prepareClipboardProse,
+  styleClipboardProse,
+} from "./clipboardRich";
+import { normalizeMathHTML, protectMarkdownMath } from "./math";
 export const NATIVE_MIME = "application/x-codebook";
 const blockTags = new Set([
   "P",
@@ -108,8 +115,16 @@ function retainDocumentFormatting(parsed: Document) {
       }
     });
 }
-export function sanitizeHTML(html: string): string {
-  const clean = DOMPurify.sanitize(html, {
+export function sanitizeHTML(
+  html: string,
+  options: { defaultTypography?: boolean } = {},
+): string {
+  // Recover semantic math/code/layout before DOMPurify removes site-specific
+  // markup. This DOM is never attached to the page; all output is sanitized.
+  const source = new DOMParser().parseFromString(html, "text/html");
+  normalizeMathHTML(source);
+  const recognizedProse = normalizeRichClipboard(source);
+  const clean = DOMPurify.sanitize(source.body.innerHTML, {
     USE_PROFILES: { html: true },
     FORBID_TAGS: [
       "style",
@@ -127,10 +142,33 @@ export function sanitizeHTML(html: string): string {
       "data-line-numbers",
       "data-caption",
       "data-callout",
+      "data-codebook-math",
+      "data-latex",
+      "colwidth",
     ],
   });
   const parsed = new DOMParser().parseFromString(clean, "text/html");
+  parsed.querySelectorAll("[colwidth]").forEach((cell) => {
+    const widths = (cell.getAttribute("colwidth") || "")
+      .split(",")
+      .map((value) => value.trim());
+    if (
+      cell.matches("td, th") &&
+      widths.length <= 100 &&
+      widths.every(
+        (value) =>
+          /^\d{1,5}$/.test(value) &&
+          Number(value) > 0 &&
+          Number(value) <= 10000,
+      )
+    )
+      cell.setAttribute("colwidth", widths.join(","));
+    else cell.removeAttribute("colwidth");
+  });
+  if (options.defaultTypography || recognizedProse)
+    prepareClipboardProse(parsed);
   retainDocumentFormatting(parsed);
+  if (options.defaultTypography || recognizedProse) styleClipboardProse(parsed);
   parsed.querySelectorAll("pre").forEach((pre) => {
     const code = pre.querySelector("code");
     const language =
@@ -153,9 +191,19 @@ export function sanitizeHTML(html: string): string {
   });
   return parsed.body.innerHTML;
 }
-export function markdownHTML(markdown: string) {
+export function markdownHTML(
+  markdown: string,
+  options: { defaultTypography?: boolean } = {},
+) {
+  const protectedMath = protectMarkdownMath(markdown);
   return sanitizeHTML(
-    marked.parse(markdown, { gfm: true, breaks: false }) as string,
+    protectedMath.restore(
+      marked.parse(protectedMath.source, {
+        gfm: true,
+        breaks: hasFlattenedCopyLinks(markdown),
+      }) as string,
+    ),
+    options,
   );
 }
 export function looksLikeMarkdown(text: string) {
@@ -167,9 +215,12 @@ export function clipboardHTML(
   data: Pick<DataTransfer, "getData">,
 ): string | null {
   const html = data.getData("text/html");
-  if (html) return sanitizeHTML(html);
+  if (html) return sanitizeHTML(html, { defaultTypography: true });
   const markdown = data.getData("text/markdown");
-  if (markdown) return markdownHTML(markdown);
+  if (markdown) return markdownHTML(markdown, { defaultTypography: true });
   const plain = data.getData("text/plain");
-  return looksLikeMarkdown(plain) ? markdownHTML(plain) : null;
+  const hasMath = protectMarkdownMath(plain).source !== plain;
+  return looksLikeMarkdown(plain) || hasMath
+    ? markdownHTML(plain, { defaultTypography: true })
+    : null;
 }

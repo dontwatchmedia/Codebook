@@ -90,7 +90,7 @@ describe("Permanent clipboard regression suite", () => {
       clipboardHTML({
         getData: (t) => (t === "text/markdown" ? "# Markdown" : ""),
       }),
-    ).toContain("<h1>Markdown</h1>");
+    ).toMatch(/<h1[^>]*>Markdown<\/h1>/);
     expect(
       clipboardHTML({ getData: (t) => (t === "text/plain" ? acceptance : "") }),
     ).toContain("language-cpp");

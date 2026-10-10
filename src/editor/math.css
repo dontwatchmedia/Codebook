@@ -1,0 +1,110 @@
+.math-node {
+  position: relative;
+  color: inherit;
+  border-radius: 3px;
+  outline: 1px solid transparent;
+}
+.math-node.math-inline {
+  display: inline-block;
+  vertical-align: baseline;
+  max-width: 100%;
+}
+.math-node.math-block {
+  display: block;
+  margin: 12px 0;
+  max-width: 100%;
+  font-size: 11pt;
+}
+.math-node .math-rendered {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 3px 0;
+}
+.math-node.math-inline .math-rendered {
+  display: inline-block;
+  vertical-align: middle;
+}
+.math-node .katex {
+  color: inherit;
+  white-space: nowrap;
+}
+.math-node .katex-display {
+  margin: 0;
+}
+.math-node:hover,
+.math-node:focus-within,
+.math-node.ProseMirror-selectednode {
+  outline-color: var(--accent, #1976ed);
+}
+.math-node .math-edit {
+  position: absolute;
+  right: 0;
+  top: -14px;
+  z-index: 2;
+  padding: 1px 5px;
+  border: 1px solid var(--line, #ccd3db);
+  border-radius: 4px;
+  background: var(--surface, #fff);
+  color: var(--ink, #17212b);
+  font:
+    11px/1.3 Arial,
+    sans-serif;
+  opacity: 0;
+  cursor: pointer;
+}
+.math-node:hover .math-edit,
+.math-node:focus-within .math-edit,
+.math-node.ProseMirror-selectednode .math-edit {
+  opacity: 1;
+}
+.math-node .math-edit:disabled {
+  display: none;
+}
+.manuscript[contenteditable="false"] .math-edit,
+.manuscript[contenteditable="false"] .math-source-editor {
+  display: none;
+}
+.math-node .math-source-editor {
+  display: block;
+  position: relative;
+  z-index: 3;
+  min-width: 200px;
+  max-width: 100%;
+  padding: 10px;
+  border: 1px solid var(--line, #ccd3db);
+  border-radius: 4px;
+  background: var(--surface, #fff);
+  color: var(--ink, #17212b);
+  font:
+    13px/1.4 Arial,
+    sans-serif;
+  white-space: normal;
+}
+.math-source-editor label {
+  display: block;
+}
+.math-source-editor textarea {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 75px;
+  margin: 6px 0;
+  padding: 6px;
+  background: var(--paper, #fff);
+  color: var(--ink, #17212b);
+  font:
+    13px/1.4 Consolas,
+    monospace;
+}
+.math-source-editor button {
+  margin-right: 8px;
+  padding: 4px 7px;
+  font: inherit;
+}
+.math-fallback {
+  font-family: Consolas, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
